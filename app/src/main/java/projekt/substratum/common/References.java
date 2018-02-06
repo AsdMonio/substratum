@@ -619,12 +619,6 @@ public enum References {
         String date = dateFormat.format(new Date());
         if (prefs.contains(date)) {
             Set<String> pref = prefs.getStringSet(date, new HashSet<>());
-            if (checkPackageRegex(context, pref.toArray(new String[pref.size()]))) {
-                Log.d("PatcherDatabase",
-                        "The database has triggered a primary level blacklist package.");
-                uncertified = true;
-                return true;
-            }
         }
         uncertified = false;
         return false;
