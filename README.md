@@ -1,3 +1,4 @@
+This is a fork of Substratum with anti-piracy removed (yellow background and uncertified status).
 ![Alt text](https://i.imgur.com/HS3E6Vb.png)
 
 # substratum development branch [![Build Status](https://travis-ci.org/substratum/substratum.svg?branch=dev)](https://travis-ci.org/substratum/substratum)
