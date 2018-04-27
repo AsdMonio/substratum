@@ -37,7 +37,7 @@ public enum BinaryInstaller {
      * @param context Self explanatory, bud.
      * @param forced  Ignore the dynamic check and just install no matter what
      */
-    public static void install(Context context, Boolean forced) {
+    public static void install(Context context, boolean forced) {
         injectAAPT(context, forced);
         injectZipAlign(context, forced);
     }
@@ -48,7 +48,7 @@ public enum BinaryInstaller {
      * @param context Self explanatory, bud.
      * @param forced  Ignore the dynamic check and just install no matter what
      */
-    private static void injectAAPT(Context context, Boolean forced) {
+    private static void injectAAPT(Context context, boolean forced) {
         String aaptPath = context.getFilesDir().getAbsolutePath() + "/aapt";
 
         // Check if AAPT is installed on the device
@@ -91,8 +91,7 @@ public enum BinaryInstaller {
                 Log.d(References.SUBSTRATUM_LOG,
                         "Android Asset Packaging Tool (x86) " +
                                 "has been added into the compiler directory.");
-            } catch (Exception e) {
-                // Suppress warning
+            } catch (Exception ignored) {
             }
         }
         File f = new File(aaptPath);
@@ -108,7 +107,7 @@ public enum BinaryInstaller {
      * @param context Self explanatory, bud.
      * @param forced  Ignore the dynamic check and just install no matter what
      */
-    private static void injectZipAlign(Context context, Boolean forced) {
+    private static void injectZipAlign(Context context, boolean forced) {
         String zipalignPath = context.getFilesDir().getAbsolutePath() + "/zipalign";
         File f = new File(zipalignPath);
 
@@ -132,8 +131,7 @@ public enum BinaryInstaller {
                 Log.d(References.SUBSTRATUM_LOG,
                         "ZipAlign (x86) " +
                                 "has been added into the compiler directory.");
-            } catch (Exception e) {
-                // Suppress warning
+            } catch (Exception ignored) {
             }
         }
 

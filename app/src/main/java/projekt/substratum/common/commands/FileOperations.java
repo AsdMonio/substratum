@@ -66,7 +66,7 @@ public enum FileOperations {
      *
      * @param foldername Folder name
      */
-    public static void setContext(final String foldername) {
+    public static void setSystemFileContext(final String foldername) {
         Root.runCommand("chcon -R u:object_r:system_file:s0 " + foldername);
     }
 
@@ -193,7 +193,7 @@ public enum FileOperations {
         if (checkSubstratumService(context) && needRoot) {
             SubstratumService.createNewFolder(destination);
         } else if (checkThemeInterfacer(context) && needRoot) {
-            ThemeInterfacerService.createNewFolder(context, destination);
+            ThemeInterfacerService.createNewFolder(destination);
         } else {
             createNewFolder(destination);
         }
@@ -240,7 +240,7 @@ public enum FileOperations {
         } else if (checkThemeInterfacer(context) && needRoot) {
             Log.d(COPY_LOG,
                     "Using theme interface operation to copy " + source + " to " + destination);
-            ThemeInterfacerService.copy(context, source, destination);
+            ThemeInterfacerService.copy(source, destination);
 
             // Wait until copy succeeds
             try {
@@ -274,8 +274,7 @@ public enum FileOperations {
         try {
             final File in = new File(source);
             FileUtils.copyFile(in, out);
-        } catch (final IOException e) {
-            // Suppress warning
+        } catch (final IOException ignored) {
         }
         if (!out.exists()) {
             Log.d(COPY_LOG,
@@ -322,8 +321,7 @@ public enum FileOperations {
         try {
             final File in = new File(source);
             FileUtils.copyDirectory(in, out);
-        } catch (final IOException e) {
-            // Suppress warning
+        } catch (final IOException ignored) {
         }
         if (!out.exists()) {
             Log.d(COPY_LOG,
@@ -361,7 +359,7 @@ public enum FileOperations {
      */
     public static void delete(final Context context,
                               final String directory,
-                              final Boolean deleteParent) {
+                              final boolean deleteParent) {
         final String dataDir = context.getDataDir().getAbsolutePath();
         final String externalDir = Environment.getExternalStorageDirectory().getAbsolutePath();
         final boolean needRoot = (!directory.startsWith(dataDir) && !directory.startsWith
@@ -372,7 +370,7 @@ public enum FileOperations {
             SubstratumService.delete(directory, deleteParent);
         } else if (checkThemeInterfacer(context) && needRoot) {
             Log.d(DELETE_LOG, "Using theme interfacer operation to delete " + directory);
-            ThemeInterfacerService.delete(context, directory, deleteParent);
+            ThemeInterfacerService.delete(directory, deleteParent);
 
             // Wait until delete success
             try {
@@ -394,8 +392,6 @@ public enum FileOperations {
     }
 
     /**
-     * The meat of {@link #delete(Context, String, Boolean)}
-     *
      * @param directory    Directory
      * @param deleteParent Flag to delete the parent folder as well
      */
@@ -410,10 +406,9 @@ public enum FileOperations {
             } else {
                 FileUtils.cleanDirectory(dir);
             }
-        } catch (final FileNotFoundException e) {
+        } catch (final FileNotFoundException ignored) {
             Log.d(DELETE_LOG, "File already " + (deleteParent ? "deleted." : "cleaned."));
-        } catch (final IOException e) {
-            // Suppress warning
+        } catch (final IOException ignored) {
         }
         if (dir.exists()) {
             Log.d(DELETE_LOG,
@@ -457,7 +452,7 @@ public enum FileOperations {
         } else if (checkThemeInterfacer(context) && needRoot) {
             Log.d(MOVE_LOG,
                     "Using theme interfacer operation to move " + source + " to " + destination);
-            ThemeInterfacerService.move(context, source, destination);
+            ThemeInterfacerService.move(source, destination);
 
             // Wait until move success
             try {
@@ -548,6 +543,7 @@ public enum FileOperations {
      * @param remember     Should be the same as listDir, so we strip out the unnecessary prefix
      *                     so it only extracts to a specified folder without the asset manager's
      *                     list structure.
+     * @param cipher       Encryption key
      */
     public static boolean copyFileOrDir(final AssetManager assetManager,
                                         final String listDir,
@@ -670,8 +666,7 @@ public enum FileOperations {
                     outputStream.flush();
                     outputStream.close();
                 }
-            } catch (final IOException e) {
-                // Suppress warning
+            } catch (final IOException ignored) {
             }
         }
         return false;

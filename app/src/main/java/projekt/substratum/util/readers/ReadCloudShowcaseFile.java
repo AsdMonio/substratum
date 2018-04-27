@@ -47,74 +47,69 @@ public enum ReadCloudShowcaseFile {
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(fXmlFile);
             doc.getDocumentElement().normalize();
-            NodeList nList = doc.getElementsByTagName("theme");
+            NodeList nodeList = doc.getElementsByTagName("theme");
 
             Map<String, String> map = new TreeMap<>();
-            for (int temp = 0; temp < nList.getLength(); temp++) {
-                Node nNode = nList.item(temp);
-                if ((int) nNode.getNodeType() == (int) Node.ELEMENT_NODE) {
-                    Element eElement = (Element) nNode;
+            for (int temp = 0; temp < nodeList.getLength(); temp++) {
+                Node node = nodeList.item(temp);
+                if ((int) node.getNodeType() == (int) Node.ELEMENT_NODE) {
+                    Element element = (Element) node;
 
-                    String addon_download_name = eElement.getAttribute("id");
+                    String addonDownloadName = element.getAttribute("id");
 
-                    String addon_download_link =
-                            eElement.getElementsByTagName("link").item(0).getTextContent();
-
-                    String addon_author = eElement.getElementsByTagName("author").item(0).
+                    String addonAuthor = element.getElementsByTagName("author").item(0).
                             getTextContent();
 
-                    String addon_backgroundimage = "";
+                    String addonBackgroundimage = "";
                     try {
                         // Try to see if the entry has an image override tag <backgroundimage>
-                        addon_backgroundimage = eElement.getElementsByTagName("backgroundimage")
+                        addonBackgroundimage = element.getElementsByTagName("backgroundimage")
                                 .item(0).getTextContent();
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
                         // There is no image override tag
                     }
 
-                    String addon_package_name = "";
+                    String addonPackageName = "";
                     try {
                         // Try to see if the entry has an image override tag <backgroundimage>
-                        addon_package_name = eElement.getElementsByTagName("package")
+                        addonPackageName = element.getElementsByTagName("package")
                                 .item(0).getTextContent();
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
                         // There is no image override tag
                     }
 
-                    String addon_pricing = eElement.getElementsByTagName("pricing").item(0)
+                    String addonPricing = element.getElementsByTagName("pricing").item(0)
                             .getTextContent();
 
-                    if (addon_backgroundimage.isEmpty()) {
+                    if (addonBackgroundimage.isEmpty()) {
                         String[] finalArray = {
-                                addon_download_name,
-                                addon_download_link,
-                                addon_author,
-                                addon_pricing,
-                                addon_package_name
+                                addonDownloadName,
+                                addonAuthor,
+                                addonPricing,
+                                addonPackageName
                         };
                         map.put(finalArray[0], finalArray[1]);
-                        map.put(finalArray[0] + "-author", finalArray[2]);
-                        map.put(finalArray[0] + "-pricing", finalArray[3]);
-                        map.put(finalArray[0] + "-package-name", finalArray[4]);
+                        map.put(finalArray[0] + "-author", finalArray[1]);
+                        map.put(finalArray[0] + "-pricing", finalArray[2]);
+                        map.put(finalArray[0] + "-package-name", finalArray[3]);
                     } else {
                         String[] finalArray = {
-                                addon_download_name,
-                                addon_download_link,
-                                addon_author,
-                                addon_pricing,
-                                addon_backgroundimage,
-                                addon_package_name
+                                addonDownloadName,
+                                addonAuthor,
+                                addonPricing,
+                                addonBackgroundimage,
+                                addonPackageName
                         };
                         map.put(finalArray[0], finalArray[1]);
-                        map.put(finalArray[0] + "-author", finalArray[2]);
-                        map.put(finalArray[0] + "-pricing", finalArray[3]);
-                        map.put(finalArray[0] + "-feature-image", finalArray[4]);
-                        map.put(finalArray[0] + "-package-name", finalArray[5]);
+                        map.put(finalArray[0] + "-author", finalArray[1]);
+                        map.put(finalArray[0] + "-pricing", finalArray[2]);
+                        map.put(finalArray[0] + "-feature-image", finalArray[3]);
+                        map.put(finalArray[0] + "-package-name", finalArray[4]);
                     }
                 }
             }
             return map;
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             return new TreeMap<String, String>();
         }
     }

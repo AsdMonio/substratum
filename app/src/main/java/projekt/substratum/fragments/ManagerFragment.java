@@ -18,6 +18,7 @@
 
 package projekt.substratum.fragments;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -25,6 +26,9 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.databinding.DataBindingUtil;
+import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -38,7 +42,7 @@ import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.SearchView;
+import android.text.SpannableStringBuilder;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -48,6 +52,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.SearchView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -61,10 +66,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
 import projekt.substratum.MainActivity;
 import projekt.substratum.R;
 import projekt.substratum.Substratum;
@@ -76,8 +80,11 @@ import projekt.substratum.common.Systems;
 import projekt.substratum.common.commands.ElevatedCommands;
 import projekt.substratum.common.commands.FileOperations;
 import projekt.substratum.common.platform.ThemeManager;
+import projekt.substratum.databinding.ManagerFragmentBinding;
+import projekt.substratum.util.helpers.StringUtils;
 import projekt.substratum.util.views.FloatingActionMenu;
 
+import static projekt.substratum.MainActivity.userInput;
 import static projekt.substratum.common.Packages.getOverlayMetadata;
 import static projekt.substratum.common.Packages.getOverlayParent;
 import static projekt.substratum.common.Packages.getOverlayTarget;
@@ -89,80 +96,53 @@ import static projekt.substratum.common.References.MANAGER_REFRESH;
 import static projekt.substratum.common.References.PIXEL_NEXUS_DIR;
 import static projekt.substratum.common.References.REFRESH_WINDOW_DELAY;
 import static projekt.substratum.common.References.VENDOR_DIR;
+import static projekt.substratum.common.Systems.checkAndromeda;
 import static projekt.substratum.common.Systems.checkOMS;
 import static projekt.substratum.common.platform.ThemeManager.STATE_DISABLED;
 import static projekt.substratum.common.platform.ThemeManager.STATE_ENABLED;
 import static projekt.substratum.common.platform.ThemeManager.isOverlayEnabled;
 import static projekt.substratum.util.helpers.MapUtils.sortMapByValues;
 
-public class ManagerFragment extends Fragment implements SearchView.OnQueryTextListener {
+public class ManagerFragment extends Fragment {
 
+    // TODO: Need more delay or change how we decide when to refresh the fragment
     private static final int MANAGER_FRAGMENT_INITIAL_DELAY = 500;
     public static MaterialSheetFab materialSheetFab;
-    @BindView(R.id.toggle_zone)
-    RelativeLayout toggle_zone;
-    @BindView(R.id.no_overlays_enabled)
-    RelativeLayout no_overlays_enabled;
-    @BindView(R.id.overlays_recycler_view)
-    RecyclerView mRecyclerView;
-    @BindView(R.id.header_loading_bar)
-    ProgressBar loadingBar;
-    @BindView(R.id.fab_sheet)
-    View sheetView;
-    @BindView(R.id.apply_fab)
-    FloatingActionMenu floatingActionButton;
-    @BindView(R.id.overlay)
-    View overlay;
-    @BindView(R.id.swipeRefreshLayout)
-    SwipeRefreshLayout swipeRefreshLayout;
-    @BindView(R.id.select_all)
-    Switch toggle_all;
-    @BindView(R.id.enable_disable_selected)
-    TextView enable_disable_selected;
-    @BindView(R.id.enable_selected)
-    TextView enable_selected;
-    @BindView(R.id.disable_selected)
-    TextView disable_selected;
-    @BindView(R.id.uninstall)
-    TextView uninstall_selected;
-    @BindView(R.id.no_themes_title)
-    TextView titleView;
-    @BindView(R.id.no_themes_description)
-    TextView textView;
-    private ArrayList<String> activated_overlays;
+    public static LayoutReloader layoutReloader;
+    private RelativeLayout toggleZone;
+    private RelativeLayout noOverlaysEnabled;
+    @SuppressLint("StaticFieldLeak")
+    public static RecyclerView recyclerView;
+    private ProgressBar loadingBar;
+    private FloatingActionMenu floatingActionButton;
+    private SwipeRefreshLayout swipeRefreshLayout;
+    private Switch toggleAll;
+    private TextView enableSelected;
+    private TextView titleView;
+    private TextView textView;
+    private ArrayList<String> activatedOverlays;
     private ManagerAdapter mAdapter;
     private SharedPreferences prefs;
     private List<ManagerItem> overlaysList;
-    private Boolean first_run;
+    private Boolean firstRun;
     private List<ManagerItem> overlayList;
     private FinishReceiver finishReceiver;
     private Context context;
     private LocalBroadcastManager localBroadcastManager;
     private BroadcastReceiver refreshReceiver;
     private SearchView searchView;
-    private String userInput = "";
-    private Boolean first_boot = true;
-    private LayoutReloader layoutReloader;
-
-    /**
-     * Returns the MaterialSheetFab object within this fragment
-     *
-     * @return Returns the MaterialSheetFab object
-     */
-    public MaterialSheetFab getFab() {
-        return materialSheetFab;
-    }
+    private boolean firstBoot = true;
 
     /**
      * Reset the RecyclerView and Adapter
      */
     private void resetRecyclerView() {
         // Initialize the recycler view with an empty adapter first
-        ArrayList<ManagerItem> empty_array = new ArrayList<>();
-        RecyclerView.Adapter empty_adapter = new ManagerAdapter(empty_array, false);
-        mRecyclerView.setHasFixedSize(true);
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(context));
-        mRecyclerView.setAdapter(empty_adapter);
+        ArrayList<ManagerItem> emptyArray = new ArrayList<>();
+        RecyclerView.Adapter emptyAdapter = new ManagerAdapter(emptyArray);
+        recyclerView.setHasFixedSize(true);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        recyclerView.setAdapter(emptyAdapter);
     }
 
     /**
@@ -170,7 +150,7 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
      */
     public void setSwipeRefreshLayoutRefreshing() {
         if (searchView.isIconified()) {
-            if ((first_run != null) && mRecyclerView.isShown() && !first_run) {
+            if ((firstRun != null) && recyclerView.isShown() && !firstRun) {
                 if (layoutReloader != null && !layoutReloader.isCancelled()) {
                     layoutReloader.cancel(true);
                     layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
@@ -189,6 +169,19 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
     }
 
     @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (layoutReloader != null && !layoutReloader.isCancelled()) {
+            layoutReloader.cancel(true);
+            layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
+            layoutReloader.execute();
+        } else {
+            layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
+            layoutReloader.execute();
+        }
+    }
+
+    @Override
     public View onCreateView(
             @NonNull LayoutInflater inflater,
             ViewGroup container,
@@ -199,20 +192,43 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
         context = Substratum.getInstance();
         prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
-        View view = inflater.inflate(R.layout.manager_fragment, container, false);
-        ButterKnife.bind(this, view);
+        ManagerFragmentBinding managerFragmentBinding =
+                DataBindingUtil.inflate(inflater, R.layout.manager_fragment, container, false);
+
+        View view = managerFragmentBinding.getRoot();
+
+        toggleZone = managerFragmentBinding.toggleZone;
+        noOverlaysEnabled = managerFragmentBinding.noOverlaysEnabled;
+        recyclerView = managerFragmentBinding.overlaysRecyclerView;
+        loadingBar = managerFragmentBinding.headerLoadingBar;
+        floatingActionButton = managerFragmentBinding.applyFab;
+        View sheetView = managerFragmentBinding.fabSheet;
+        View overlay = managerFragmentBinding.overlay;
+        swipeRefreshLayout = managerFragmentBinding.swipeRefreshLayout;
+        toggleAll = managerFragmentBinding.selectAll;
+        TextView enableDisableSelected = managerFragmentBinding.enableDisableSelected;
+        enableSelected = managerFragmentBinding.enableSelected;
+        TextView disableSelected = managerFragmentBinding.disableSelected;
+        TextView uninstallSelected = managerFragmentBinding.uninstall;
+        titleView = managerFragmentBinding.noThemesTitle;
+        textView = managerFragmentBinding.noThemesDescription;
 
         // Register the theme install receiver to auto refresh the fragment
         refreshReceiver = new RefreshReceiver();
         localBroadcastManager = LocalBroadcastManager.getInstance(context);
-        localBroadcastManager.registerReceiver(refreshReceiver,
-                new IntentFilter(MANAGER_REFRESH));
+        localBroadcastManager.registerReceiver(refreshReceiver, new IntentFilter(MANAGER_REFRESH));
 
         loadingBar.setVisibility(View.GONE);
 
-        // Don't even display the "enable_disable_selected" button to non-oms users.
+        // Don't even display the "enableDisableSelected" button to non-oms users.
         if (!checkOMS(context))
             sheetView.findViewById(R.id.enable_disable_selected).setVisibility(View.GONE);
+        if (MainActivity.instanceBasedAndromedaFailure) {
+            // Andromeda is broken!
+            sheetView.findViewById(R.id.enable_disable_selected).setVisibility(View.GONE);
+            sheetView.findViewById(R.id.enable_selected).setVisibility(View.GONE);
+            sheetView.findViewById(R.id.disable_selected).setVisibility(View.GONE);
+        }
         int sheetColor = context.getColor(R.color.fab_menu_background_card);
         int fabColor = context.getColor(R.color.fab_background_color);
 
@@ -228,7 +244,7 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
         swipeRefreshLayout.setOnRefreshListener(this::setSwipeRefreshLayoutRefreshing);
 
         // Adjust toggle all switch
-        toggle_all.setOnCheckedChangeListener(
+        toggleAll.setOnCheckedChangeListener(
                 (buttonView, isChecked) -> {
                     try {
                         overlayList = mAdapter.getOverlayManagerList();
@@ -271,13 +287,13 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
             context.registerReceiver(finishReceiver, intentFilter);
         }
 
-        toggle_zone.setOnClickListener(new View.OnClickListener() {
+        toggleZone.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 try {
                     overlayList = mAdapter
                             .getOverlayManagerList();
-                    if (toggle_all.isChecked()) {
+                    if (toggleAll.isChecked()) {
                         for (int i = 0; i < overlayList.size(); i++) {
                             ManagerItem currentOverlay = overlayList
                                     .get(i);
@@ -296,7 +312,7 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                         }
                         mAdapter.notifyDataSetChanged();
                     }
-                    toggle_all.setChecked(!toggle_all
+                    toggleAll.setChecked(!toggleAll
                             .isChecked());
                 } catch (Exception e) {
                     Log.e(getClass().getSimpleName(),
@@ -305,22 +321,22 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
             }
         });
 
-        enable_disable_selected.setOnClickListener(v ->
+        enableDisableSelected.setOnClickListener(v ->
                 new RunEnableDisable(ManagerFragment.this).execute());
-        enable_selected.setOnClickListener(v ->
+        enableSelected.setOnClickListener(v ->
                 new RunEnable(ManagerFragment.this).execute());
         if (!Systems.checkOMS(context)) {
             if (!Systems.isSamsungDevice(context)) {
-                disable_selected.setText(getString(R.string.fab_menu_uninstall));
+                disableSelected.setText(getString(R.string.fab_menu_uninstall));
             } else {
-                disable_selected.setVisibility(View.GONE);
+                disableSelected.setVisibility(View.GONE);
             }
         }
-        disable_selected.setOnClickListener(v ->
+        disableSelected.setOnClickListener(v ->
                 new RunDisable(ManagerFragment.this).execute());
         if (!Systems.checkOMS(context) && !Systems.isSamsungDevice(context))
-            uninstall_selected.setVisibility(View.GONE);
-        uninstall_selected.setOnClickListener(v ->
+            uninstallSelected.setVisibility(View.GONE);
+        uninstallSelected.setOnClickListener(v ->
                 new RunUninstall(ManagerFragment.this).execute());
 
         if (!Systems.isSamsungDevice(context)
@@ -348,15 +364,52 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
      */
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        menu.clear();
         inflater.inflate(R.menu.overlays_list_menu, menu);
-        menu.findItem(R.id.restart_systemui).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
-        menu.findItem(R.id.per_app).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
-        menu.findItem(R.id.action_search).setVisible(true);
-        menu.findItem(R.id.action_search).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        MainActivity mainActivity = (MainActivity) getActivity();
+        if (mainActivity != null) {
+            mainActivity.searchView = (SearchView) searchItem.getActionView();
+            mainActivity.searchView.setOnQueryTextListener(mainActivity);
+            searchView = ((MainActivity) getActivity()).searchView;
+            searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+                @Override
+                public boolean onMenuItemActionExpand(MenuItem menuItem) {
+                    mainActivity.searchView.setIconified(false);
+                    return true;
+                }
+
+                @Override
+                public boolean onMenuItemActionCollapse(MenuItem menuItem) {
+                    if (!userInput.equals("")) {
+                        userInput = "";
+                        if (layoutReloader != null && !layoutReloader.isCancelled()) {
+                            layoutReloader.cancel(true);
+                            layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
+                            layoutReloader.execute();
+                        } else {
+                            layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
+                            layoutReloader.execute();
+                        }
+                    }
+                    return true;
+                }
+            });
+        }
+
         assert getActivity() != null;
-        searchView = ((MainActivity) getActivity()).searchView;
-        if (searchView != null) searchView.setOnQueryTextListener(this);
         updateMenuButtonState(menu.findItem(R.id.alphabetize));
+        updateSortingMenuButtonState(menu.findItem(R.id.sort_by_state));
+        if (!checkOMS(context) ||
+                checkAndromeda(context) ||
+                MainActivity.instanceBasedAndromedaFailure) {
+            menu.findItem(R.id.restart_systemui).setVisible(false);
+        }
+        if (!checkOMS(context)) {
+            menu.findItem(R.id.sort_by_state).setVisible(false);
+            prefs.edit().remove("manager_sorting_mode").apply();
+        }
         super.onCreateOptionsMenu(menu, inflater);
     }
 
@@ -375,6 +428,36 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
     }
 
     /**
+     * Update the options menu icons
+     *
+     * @param menuItem Object of menu item
+     */
+    private void updateSortingMenuButtonState(MenuItem menuItem) {
+        String sortingMode = prefs.getString("manager_sorting_mode", "default");
+        String assignedMode = context.getString(R.string.menu_state_prefix);
+        switch (sortingMode) {
+            case "default":
+                String message = String.format(assignedMode,
+                        context.getString(R.string.menu_state_default));
+                menuItem.setIcon(R.drawable.toolbar_manager_all);
+                menuItem.setTitle(message);
+                break;
+            case "enabled":
+                String message2 = String.format(assignedMode,
+                        context.getString(R.string.menu_state_enabled));
+                menuItem.setIcon(R.drawable.toolbar_manager_enabled);
+                menuItem.setTitle(message2);
+                break;
+            case "disabled":
+                String message3 = String.format(assignedMode,
+                        context.getString(R.string.menu_state_disabled));
+                menuItem.setIcon(R.drawable.toolbar_manager_disabled);
+                menuItem.setTitle(message3);
+                break;
+        }
+    }
+
+    /**
      * Assign actions to every option when they are selected
      *
      * @param item Object of menu item
@@ -385,26 +468,61 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
         if (materialSheetFab.isSheetVisible()) {
             materialSheetFab.hideSheet();
         } else {
-            if (item.getItemId() == R.id.alphabetize) {
-                boolean alphabetize = prefs.getBoolean("alphabetize_overlays", true);
-                if (alphabetize) {
-                    prefs.edit().putBoolean("alphabetize_overlays", false).apply();
-                } else {
-                    prefs.edit().putBoolean("alphabetize_overlays", true).apply();
-                }
-                updateMenuButtonState(item);
-                if (!alphabetize) refreshThemeName();
-                if (layoutReloader != null && !layoutReloader.isCancelled()) {
-                    layoutReloader.cancel(true);
-                    layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
-                    layoutReloader.execute();
-                } else {
-                    layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
-                    layoutReloader.execute();
-                }
-                assert getActivity() != null;
-                getActivity().invalidateOptionsMenu();
-                return true;
+            switch (item.getItemId()) {
+                case R.id.alphabetize:
+                    boolean alphabetize = prefs.getBoolean("alphabetize_overlays", true);
+                    if (alphabetize) {
+                        prefs.edit().putBoolean("alphabetize_overlays", false).apply();
+                    } else {
+                        prefs.edit().putBoolean("alphabetize_overlays", true).apply();
+                    }
+                    updateMenuButtonState(item);
+                    if (!alphabetize) refreshThemeName();
+                    if (layoutReloader != null && !layoutReloader.isCancelled()) {
+                        layoutReloader.cancel(true);
+                        layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
+                        layoutReloader.execute();
+                    } else {
+                        layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
+                        layoutReloader.execute();
+                    }
+                    assert getActivity() != null;
+                    getActivity().invalidateOptionsMenu();
+                    return true;
+                case R.id.sort_by_state:
+                    String assignedMode = context.getString(R.string.menu_state_prefix);
+                    String sortingMode = prefs.getString("manager_sorting_mode", "default");
+                    switch (sortingMode) {
+                        case "default":
+                            String message = String.format(assignedMode,
+                                    context.getString(R.string.menu_state_enabled));
+                            prefs.edit().putString("manager_sorting_mode", "enabled").apply();
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                            break;
+                        case "enabled":
+                            String message2 = String.format(assignedMode,
+                                    context.getString(R.string.menu_state_disabled));
+                            prefs.edit().putString("manager_sorting_mode", "disabled").apply();
+                            Toast.makeText(context, message2, Toast.LENGTH_SHORT).show();
+                            break;
+                        case "disabled":
+                            String message3 = String.format(assignedMode,
+                                    context.getString(R.string.menu_state_default));
+                            prefs.edit().putString("manager_sorting_mode", "default").apply();
+                            Toast.makeText(context, message3, Toast.LENGTH_SHORT).show();
+                            break;
+                    }
+                    if (layoutReloader != null && !layoutReloader.isCancelled()) {
+                        layoutReloader.cancel(true);
+                        layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
+                        layoutReloader.execute();
+                    } else {
+                        layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
+                        layoutReloader.execute();
+                    }
+                    assert getActivity() != null;
+                    getActivity().invalidateOptionsMenu();
+                    return true;
             }
         }
         return super.onOptionsItemSelected(item);
@@ -422,11 +540,11 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                     String metadata = getOverlayMetadata(
                             context, packageName, References.metadataOverlayParent);
                     if ((metadata != null) && !metadata.isEmpty()) {
-                        String pName = "<b>" +
-                                context.getString(R.string.manager_theme_name) +
-                                "</b> " +
-                                getPackageName(context, metadata);
-                        overlayList.get(i).setThemeName(pName);
+                        SpannableStringBuilder pName = StringUtils.format(
+                                context.getString(R.string.manager_theme_name),
+                                getPackageName(context, metadata),
+                                Typeface.BOLD);
+                        overlayList.get(i).setThemeName(pName.toString());
                     }
                 }
             }
@@ -436,6 +554,10 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        recyclerView.invalidate();
+        recyclerView = null;
+
         if (Systems.checkThemeInterfacer(context)) {
             try {
                 context.unregisterReceiver(finishReceiver);
@@ -461,36 +583,6 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
     }
 
     /**
-     * When the search bar text was changed, and then the user presses enter
-     *
-     * @param query User's input
-     * @return True, if the text was changed
-     */
-    @Override
-    public boolean onQueryTextSubmit(String query) {
-        return false;
-    }
-
-    /**
-     * When the search bar text was changed, reload the fragment
-     *
-     * @param newText User's input
-     * @return True, if the text was changed
-     */
-    @Override
-    public boolean onQueryTextChange(String newText) {
-        if (!userInput.equals(newText)) {
-            userInput = newText;
-            if (layoutReloader != null && !layoutReloader.isCancelled()) {
-                layoutReloader.cancel(true);
-                layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);
-                layoutReloader.execute();
-            }
-        }
-        return true;
-    }
-
-    /**
      * The beef of reloading the whole manager's list
      */
     private static class LayoutReloader extends AsyncTask<Void, Void, Void> {
@@ -508,13 +600,13 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
         protected void onPreExecute() {
             ManagerFragment fragment = ref.get();
             if (fragment != null) {
-                currentPosition = ((LinearLayoutManager) fragment.mRecyclerView
+                currentPosition = ((LinearLayoutManager) fragment.recyclerView
                         .getLayoutManager())
                         .findFirstCompletelyVisibleItemPosition();
                 fragment.swipeRefreshLayout.setRefreshing(true);
-                fragment.toggle_all.setChecked(false);
-                fragment.toggle_all.setEnabled(false);
-                fragment.mRecyclerView.setEnabled(false);
+                fragment.toggleAll.setChecked(false);
+                fragment.toggleAll.setEnabled(false);
+                fragment.recyclerView.setEnabled(false);
                 final String userInputString = userInput.get();
                 if (userInputString != null && !userInputString.isEmpty()) {
                     fragment.resetRecyclerView();
@@ -529,48 +621,61 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                 try {
                     Context context = fragment.context;
                     fragment.overlaysList = new ArrayList<>();
-                    fragment.activated_overlays = new ArrayList<>();
+                    fragment.activatedOverlays = new ArrayList<>();
 
                     if (Systems.checkOMS(fragment.context)) {
-                        fragment.activated_overlays = new ArrayList<>(
+                        fragment.activatedOverlays = new ArrayList<>();
+
+                        List<String> enabledOverlays = new ArrayList<>(
                                 ThemeManager.listOverlays(fragment.context, STATE_ENABLED));
-                        List<String> disabled_overlays = new ArrayList<>(
+                        List<String> disabledOverlays = new ArrayList<>(
                                 ThemeManager.listOverlays(fragment.context, STATE_DISABLED));
-                        List<String> all_overlays = new ArrayList<>(
-                                fragment.activated_overlays);
-                        all_overlays.addAll(disabled_overlays);
-                        Collections.sort(all_overlays);
+
+                        List<String> allOverlays = new ArrayList<>();
+                        switch (fragment.prefs.getString("manager_sorting_mode", "default")) {
+                            case "default":
+                                fragment.activatedOverlays = new ArrayList<>(enabledOverlays);
+                                allOverlays.addAll(enabledOverlays);
+                                allOverlays.addAll(disabledOverlays);
+                                break;
+                            case "enabled":
+                                fragment.activatedOverlays = new ArrayList<>(enabledOverlays);
+                                allOverlays.addAll(enabledOverlays);
+                                break;
+                            case "disabled":
+                                allOverlays.addAll(disabledOverlays);
+                                break;
+                        }
+                        Collections.sort(allOverlays);
 
                         // Create the map for {package name: package identifier}
                         Map<String, String> unsortedMap = new HashMap<>();
 
                         // Then let's convert all the package names to their app names
-                        for (int i = 0; i < all_overlays.size(); i++) {
-                            boolean can_continue = true;
+                        for (int i = 0; i < allOverlays.size(); i++) {
+                            boolean canContinue = true;
                             final String userInputString = userInput.get();
                             if (userInputString != null && !userInputString.isEmpty()) {
                                 StringBuilder combined = new StringBuilder();
                                 String metadata = Packages.getOverlayMetadata(
                                         context,
-                                        all_overlays.get(i),
+                                        allOverlays.get(i),
                                         References.metadataOverlayParent);
                                 if ((metadata != null) && !metadata.isEmpty()) {
                                     combined.append(Packages.getPackageName(context, metadata));
-                                } else {
-                                    combined.append("");
                                 }
                                 combined.append(getPackageName(context,
-                                        getOverlayTarget(context, all_overlays.get(i))));
-                                if (!combined.toString().toLowerCase().contains(
-                                        userInputString.toLowerCase())) {
-                                    can_continue = false;
+                                        getOverlayTarget(context, allOverlays.get(i))));
+                                if (!combined.toString().toLowerCase(Locale.US).contains(
+                                        userInputString.toLowerCase(Locale.US))) {
+                                    canContinue = false;
                                 }
                             }
-                            if (can_continue) {
+                            if (canContinue) {
                                 try {
                                     ApplicationInfo applicationInfo = context
                                             .getPackageManager()
-                                            .getApplicationInfo(all_overlays.get(i), 0);
+                                            .getApplicationInfo(allOverlays.get(i), 0);
                                     String packageTitle = context.getPackageManager()
                                             .getApplicationLabel(applicationInfo).toString();
                                     String targetApplication = Packages.getOverlayTarget(
@@ -579,11 +684,10 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
 
                                     if (isPackageInstalled(context, targetApplication)) {
                                         unsortedMap.put(
-                                                all_overlays.get(i),
+                                                allOverlays.get(i),
                                                 getPackageName(context, targetApplication));
                                     }
-                                } catch (Exception e) {
-                                    // Suppress warning
+                                } catch (Exception ignored) {
                                 }
                             }
                         }
@@ -594,13 +698,13 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                                     sortMapByValues(unsortedMap);
 
                             for (Pair<String, String> entry : sortedMap) {
-                                if (disabled_overlays.contains(entry.first)) {
+                                if (disabledOverlays.contains(entry.first)) {
                                     ManagerItem st = new ManagerItem(
                                             context,
                                             entry.first,
                                             false);
                                     fragment.overlaysList.add(st);
-                                } else if (fragment.activated_overlays.contains(entry.first)) {
+                                } else if (fragment.activatedOverlays.contains(entry.first)) {
                                     ManagerItem st = new ManagerItem(
                                             context,
                                             entry.first,
@@ -613,28 +717,27 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                         // At this point, the object is an RRO formatted check
                         List<String> listed =
                                 ThemeManager.listOverlays(fragment.context, STATE_ENABLED);
-                        fragment.activated_overlays.addAll(listed);
-                        Collections.sort(fragment.activated_overlays);
-                        for (int i = 0; i < fragment.activated_overlays.size(); i++) {
+                        fragment.activatedOverlays.addAll(listed);
+                        Collections.sort(fragment.activatedOverlays);
+                        for (int i = 0; i < fragment.activatedOverlays.size(); i++) {
                             ManagerItem st = new ManagerItem(context,
-                                    fragment.activated_overlays.get(i), true);
+                                    fragment.activatedOverlays.get(i), true);
                             StringBuilder combined = new StringBuilder();
                             combined.append(st.getLabelName());
                             combined.append(st.getThemeName());
-                            if (combined.toString().toLowerCase().contains(
-                                    userInput.get().toLowerCase()))
+                            if (combined.toString().toLowerCase(Locale.US).contains(
+                                    userInput.get().toLowerCase(Locale.US)))
                                 fragment.overlaysList.add(st);
                         }
                     }
 
                     try {
-                        Thread.sleep((long) (fragment.first_boot ?
+                        Thread.sleep((long) (fragment.firstBoot ?
                                 MANAGER_FRAGMENT_INITIAL_DELAY : 0));
-                    } catch (InterruptedException ie) {
-                        // Suppress warning
+                    } catch (InterruptedException ignored) {
                     }
-                    if (fragment.first_boot) fragment.first_boot = false;
-                } catch (Exception e) {
+                    if (fragment.firstBoot) fragment.firstBoot = false;
+                } catch (Exception ignored) {
                     // Consume window refresh
                 }
             }
@@ -648,12 +751,12 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
             if (fragment != null) {
                 Context context = fragment.context;
                 fragment.swipeRefreshLayout.setRefreshing(false);
-                fragment.toggle_all.setEnabled(true);
+                fragment.toggleAll.setEnabled(true);
                 fragment.loadingBar.setVisibility(View.GONE);
-                fragment.mAdapter = new ManagerAdapter(fragment.overlaysList, false);
-                fragment.mRecyclerView.setAdapter(fragment.mAdapter);
-                fragment.mRecyclerView.getLayoutManager().scrollToPosition(this.currentPosition);
-                fragment.mRecyclerView.setEnabled(true);
+                fragment.mAdapter = new ManagerAdapter(fragment.overlaysList);
+                fragment.recyclerView.setAdapter(fragment.mAdapter);
+                fragment.recyclerView.getLayoutManager().scrollToPosition(this.currentPosition);
+                fragment.recyclerView.setEnabled(true);
                 fragment.overlayList = fragment.mAdapter.getOverlayManagerList();
 
                 new MainActivity.DoCleanUp(context).execute();
@@ -678,9 +781,9 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
 
                 if (fragment.overlaysList.isEmpty()) {
                     fragment.floatingActionButton.hide();
-                    fragment.toggle_zone.setVisibility(View.INVISIBLE);
-                    fragment.no_overlays_enabled.setVisibility(View.VISIBLE);
-                    fragment.mRecyclerView.setVisibility(View.GONE);
+                    fragment.toggleZone.setVisibility(View.INVISIBLE);
+                    fragment.noOverlaysEnabled.setVisibility(View.VISIBLE);
+                    fragment.recyclerView.setVisibility(View.GONE);
                     fragment.textView.setText(
                             context.getString(R.string.manager_no_overlays_text));
 
@@ -697,15 +800,14 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                     }
                 } else {
                     fragment.floatingActionButton.show();
-                    fragment.toggle_zone.setVisibility(View.VISIBLE);
-                    fragment.no_overlays_enabled.setVisibility(View.GONE);
-                    fragment.mRecyclerView.setVisibility(View.VISIBLE);
+                    fragment.toggleZone.setVisibility(View.VISIBLE);
+                    fragment.noOverlaysEnabled.setVisibility(View.GONE);
+                    fragment.recyclerView.setVisibility(View.VISIBLE);
                 }
-                if (!fragment.prefs.getBoolean("manager_disabled_overlays", true) ||
-                        !Systems.checkOMS(fragment.context)) {
-                    fragment.enable_selected.setVisibility(View.GONE);
+                if (!Systems.checkOMS(fragment.context)) {
+                    fragment.enableSelected.setVisibility(View.GONE);
                 }
-                if (fragment.first_run == null) fragment.first_run = false;
+                if (fragment.firstRun == null) fragment.firstRun = false;
             }
         }
     }
@@ -735,7 +837,7 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
             ManagerFragment fragment = ref.get();
             if (fragment != null) {
                 Context context = fragment.context;
-                if ((result != null) && "unauthorized".equals(result)) {
+                if ("unauthorized".equals(result)) {
                     Toast.makeText(context,
                             fragment.getString(R.string.manage_system_not_permitted),
                             Toast.LENGTH_LONG).show();
@@ -945,7 +1047,7 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                     // Since we had to parse the directory to process the recyclerView,
                     // reparse it to notifyDataSetChanged
 
-                    fragment.activated_overlays.clear();
+                    fragment.activatedOverlays.clear();
                     fragment.overlaysList.clear();
 
                     if (Systems.isSamsungDevice(context)) {
@@ -957,7 +1059,7 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                                     context,
                                     packageInfo.packageName,
                                     References.metadataOverlayParent) != null) {
-                                fragment.activated_overlays.add(packageInfo.packageName);
+                                fragment.activatedOverlays.add(packageInfo.packageName);
                             }
                         }
                     } else {
@@ -965,7 +1067,7 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                         String[] listed = currentDir.list();
                         for (String file : listed) {
                             if (".apk".equals(file.substring(file.length() - 4))) {
-                                fragment.activated_overlays.add(file.substring(0,
+                                fragment.activatedOverlays.add(file.substring(0,
                                         file.length() - 4));
                             }
                         }
@@ -973,11 +1075,11 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                 }
 
                 // Automatically sort the activated overlays by alphabetical order
-                Collections.sort(fragment.activated_overlays);
+                Collections.sort(fragment.activatedOverlays);
 
-                for (int i = 0; i < fragment.activated_overlays.size(); i++) {
+                for (int i = 0; i < fragment.activatedOverlays.size(); i++) {
                     ManagerItem st = new ManagerItem(context,
-                            fragment.activated_overlays.get(i), true);
+                            fragment.activatedOverlays.get(i), true);
                     fragment.overlaysList.add(st);
                 }
             }
@@ -1073,7 +1175,7 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
             if (fragment != null) {
                 Context context = fragment.context;
                 fragment.overlayList = fragment.mAdapter.getOverlayManagerList();
-                boolean has_failed = false;
+                boolean hasFailed = false;
                 int len = fragment.overlayList.size();
                 ArrayList<String> disabled = new ArrayList<>();
                 ArrayList<String> enabled = new ArrayList<>();
@@ -1089,11 +1191,11 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
                                 disabled.add(managerItem.getName());
                             }
                         } else {
-                            has_failed = true;
+                            hasFailed = true;
                         }
                     }
                 }
-                if ((!enabled.isEmpty() || !disabled.isEmpty()) && !has_failed) {
+                if ((!enabled.isEmpty() || !disabled.isEmpty()) && !hasFailed) {
                     // The magic goes here
                     if (!enabled.isEmpty()) ThemeManager.enableOverlay(context, enabled);
                     if (!disabled.isEmpty()) ThemeManager.disableOverlay(context, disabled);
@@ -1239,10 +1341,10 @@ public class ManagerFragment extends Fragment implements SearchView.OnQueryTextL
         public void onReceive(Context context, Intent intent) {
             ManagerFragment fragment = ref.get();
             if (fragment != null) {
-                if (fragment.layoutReloader != null && !fragment.layoutReloader.isCancelled()) {
-                    fragment.layoutReloader.cancel(true);
-                    fragment.layoutReloader = new LayoutReloader(fragment, fragment.userInput);
-                    fragment.layoutReloader.execute();
+                if (layoutReloader != null && !layoutReloader.isCancelled()) {
+                    layoutReloader.cancel(true);
+                    layoutReloader = new LayoutReloader(fragment, MainActivity.userInput);
+                    layoutReloader.execute();
                 }
                 fragment.loadingBar.setVisibility(View.GONE);
             }

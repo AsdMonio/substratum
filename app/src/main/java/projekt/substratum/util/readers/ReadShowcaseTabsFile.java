@@ -48,21 +48,21 @@ public enum ReadShowcaseTabsFile {
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(fXmlFile);
             doc.getDocumentElement().normalize();
-            NodeList nList = doc.getElementsByTagName("tab");
+            NodeList nodeList = doc.getElementsByTagName("tab");
 
             Map<String, String> map = new LinkedHashMap<>();
-            for (int temp = 0; temp < nList.getLength(); temp++) {
-                Node nNode = nList.item(temp);
-                if ((int) nNode.getNodeType() == (int) Node.ELEMENT_NODE) {
-                    Element eElement = (Element) nNode;
+            for (int temp = 0; temp < nodeList.getLength(); temp++) {
+                Node node = nodeList.item(temp);
+                if ((int) node.getNodeType() == (int) Node.ELEMENT_NODE) {
+                    Element element = (Element) node;
 
-                    String addon_download_name = eElement.getAttribute("id");
-                    String addon_download_link =
-                            eElement.getElementsByTagName("link").item(0).getTextContent();
+                    String addonDownloadName = element.getAttribute("id");
+                    String addonDownloadLink =
+                            element.getElementsByTagName("link").item(0).getTextContent();
 
                     String[] finalArray = {
-                            addon_download_name,
-                            addon_download_link
+                            addonDownloadName,
+                            addonDownloadLink
                     };
 
                     map.put(finalArray[0], finalArray[1]);

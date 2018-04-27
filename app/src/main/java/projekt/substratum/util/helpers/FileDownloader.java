@@ -53,7 +53,6 @@ public enum FileDownloader {
             NetworkOnMainThreadException {
 
         try {
-
             // First create the cache folder
             File directory = new File(context.getCacheDir().getAbsolutePath() + '/' +
                     destinationFileOrFolder);
@@ -61,8 +60,7 @@ public enum FileDownloader {
                     !destinationFileOrFolder.endsWith(".jpg") &&
                     !destinationFileOrFolder.endsWith(".xml") &&
                     !directory.exists()) {
-                Boolean made = directory.mkdir();
-                if (!made)
+                if (!directory.mkdir())
                     Log.e(References.SUBSTRATUM_LOG,
                             "Could not make " + directory.getAbsolutePath() + " directory...");
             } else if (destinationFileOrFolder.endsWith(".xml") &&
@@ -115,8 +113,7 @@ public enum FileDownloader {
                         output.close();
                     if (input != null)
                         input.close();
-                } catch (IOException ioe) {
-                    // Suppress warning
+                } catch (IOException ignored) {
                 }
 
                 if (connection != null)

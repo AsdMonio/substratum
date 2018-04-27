@@ -24,6 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.databinding.DataBindingUtil;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -40,15 +41,13 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
 import projekt.substratum.MainActivity;
 import projekt.substratum.R;
 import projekt.substratum.Substratum;
 import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
-import projekt.substratum.common.Systems;
 import projekt.substratum.common.analytics.FirebaseAnalytics;
+import projekt.substratum.databinding.SplashscreenActivityBinding;
 import projekt.substratum.util.helpers.MD5;
 
 import static projekt.substratum.common.Internal.AUTHENTICATED_RECEIVER;
@@ -60,6 +59,7 @@ import static projekt.substratum.common.References.SUBSTRATUM_LOG;
 import static projekt.substratum.common.Systems.checkPackageSupport;
 import static projekt.substratum.common.Systems.checkThemeSystemModule;
 import static projekt.substratum.common.Systems.isAndromedaDevice;
+import static projekt.substratum.common.Systems.isSamsungDevice;
 import static projekt.substratum.common.analytics.FirebaseAnalytics.PACKAGES_PREFS;
 import static projekt.substratum.common.analytics.PackageAnalytics.isLowEnd;
 
@@ -68,28 +68,28 @@ public class SplashScreenActivity extends Activity {
     private static final long DELAY_LAUNCH_MAIN_ACTIVITY = 300;
     private static final long DELAY_LAUNCH_APP_INTRO = 2300;
     private static final long DELAY_SHOW_PROGRESS_BAR = 2500;
-    @BindView(R.id.animated_svg_view)
-    AnimatedSvgView svgView;
-    @BindView(R.id.splashscreen_image)
-    ImageView splashScreenImage;
-    @BindView(R.id.progress_bar_loader)
-    ProgressBar progressBar;
+    private ProgressBar progressBar;
     private Intent intent;
-    private Boolean first_run = false;
+    private boolean firstRun = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.splashscreen_layout);
-        ButterKnife.bind(this);
+
+        SplashscreenActivityBinding binding =
+                DataBindingUtil.setContentView(this, R.layout.splashscreen_activity);
+
+        AnimatedSvgView svgView = binding.animatedSvgView;
+        ImageView splashScreenImage = binding.splashscreenImage;
+        progressBar = binding.progressBarLoader;
 
         Intent currentIntent = getIntent();
-        first_run = currentIntent.getBooleanExtra("first_run", false);
-        checkThemeSystemModule(this, first_run);
+        firstRun = currentIntent.getBooleanExtra("first_run", false);
+        checkThemeSystemModule(this, firstRun);
         intent = new Intent(SplashScreenActivity.this, MainActivity.class);
-        long intent_launch_delay = DELAY_LAUNCH_MAIN_ACTIVITY;
+        long intentLaunchDelay = DELAY_LAUNCH_MAIN_ACTIVITY;
 
-        if (first_run && !isLowEnd()) {
+        if (firstRun && !isLowEnd()) {
             // Load the ImageView that will host the animation and
             // set its background to our AnimationDrawable XML resource.
             try {
@@ -97,7 +97,7 @@ public class SplashScreenActivity extends Activity {
                 svgView.start();
                 // Finally set the proper launch activity and delay
                 intent = new Intent(SplashScreenActivity.this, AppIntroActivity.class);
-                intent_launch_delay = DELAY_LAUNCH_APP_INTRO;
+                intentLaunchDelay = DELAY_LAUNCH_APP_INTRO;
             } catch (OutOfMemoryError ignored) {
                 Log.e(References.SUBSTRATUM_LOG, "The VM has blown up and the rendering of " +
                         "the splash screen animated icon has been cancelled.");
@@ -107,9 +107,9 @@ public class SplashScreenActivity extends Activity {
         }
 
         Handler handler = new Handler();
-        handler.postDelayed(() -> new CheckSamsung(this).execute(), intent_launch_delay);
+        handler.postDelayed(() -> new CheckSamsung(this).execute(), intentLaunchDelay);
         handler.postDelayed(() -> runOnUiThread(() -> progressBar.setVisibility(View.VISIBLE)),
-                DELAY_SHOW_PROGRESS_BAR + intent_launch_delay);
+                DELAY_SHOW_PROGRESS_BAR + intentLaunchDelay);
     }
 
     private void launch() {
@@ -156,7 +156,7 @@ public class SplashScreenActivity extends Activity {
                 editor.clear().apply();
                 FirebaseAnalytics.withdrawBlacklistedPackages(
                         activity.getApplicationContext(),
-                        activity.first_run
+                        activity.firstRun
                 );
                 checkPackageSupport(activity.getApplicationContext(), false);
                 prefs = context.getSharedPreferences(PACKAGES_PREFS, Context.MODE_PRIVATE);
@@ -171,7 +171,9 @@ public class SplashScreenActivity extends Activity {
                     timeoutCount++;
                 }
                 if (!prefs.contains(dateFormat.format(new Date()))) {
-                    Log.d(SUBSTRATUM_LOG, "Failed to withdraw blacklisted packages.");
+                    Log.e(SUBSTRATUM_LOG, "Failed to withdraw blacklisted packages...");
+                } else {
+                    Log.d(SUBSTRATUM_LOG, "Successfully withdrew blacklisted packages!");
                 }
 
                 if (isAndromedaDevice(context)) {
@@ -190,7 +192,7 @@ public class SplashScreenActivity extends Activity {
                         timeoutCount++;
                     }
                     if (!prefs2.contains("andromeda_exp_fp_" + andromedaVer)) {
-                        Log.d(SUBSTRATUM_LOG, "Failed to withdraw andromeda fingerprint.");
+                        Log.e(SUBSTRATUM_LOG, "Failed to withdraw andromeda fingerprint...");
                     } else {
                         String installed_directory =
                                 Packages.getInstalledDirectory(context, ANDROMEDA_PACKAGE);
@@ -201,11 +203,12 @@ public class SplashScreenActivity extends Activity {
                                     .putString("andromeda_installer", context.getPackageManager()
                                             .getInstallerPackageName(ANDROMEDA_PACKAGE))
                                     .apply();
+                            Log.d(SUBSTRATUM_LOG, "Successfully approved andromeda fingerprint!");
                         }
                     }
                 }
 
-                if (Systems.isSamsungDevice(context) &&
+                if (isSamsungDevice(context) &&
                         Packages.isPackageInstalled(context, SST_ADDON_PACKAGE)) {
                     int sstVersion = Packages.getAppVersionCode(context, SST_ADDON_PACKAGE);
                     FirebaseAnalytics.withdrawSungstratumFingerprint(context, sstVersion);
@@ -222,7 +225,9 @@ public class SplashScreenActivity extends Activity {
                         timeoutCount++;
                     }
                     if (!prefs2.contains("sungstratum_exp_fp_" + sstVersion)) {
-                        Log.d(SUBSTRATUM_LOG, "Failed to withdraw sungstratum fingerprint.");
+                        Log.e(SUBSTRATUM_LOG, "Failed to withdraw sungstratum fingerprint...");
+                    } else {
+                        Log.d(SUBSTRATUM_LOG, "Successfully approved sungstratum fingerprint!");
                     }
 
                     keyRetrieval = new KeyRetrieval();

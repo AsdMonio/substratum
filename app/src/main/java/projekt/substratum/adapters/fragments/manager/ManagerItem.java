@@ -24,10 +24,12 @@ import android.graphics.drawable.Drawable;
 import java.io.Serializable;
 
 import projekt.substratum.BuildConfig;
+import projekt.substratum.MainActivity;
 import projekt.substratum.R;
 import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
 
+import static projekt.substratum.common.References.metadataOverlayTypes;
 import static projekt.substratum.common.Resources.LG_FRAMEWORK;
 import static projekt.substratum.common.Resources.SAMSUNG_FRAMEWORK;
 import static projekt.substratum.common.Resources.SETTINGS_ICONS;
@@ -55,7 +57,7 @@ public class ManagerItem implements Serializable {
 
     public ManagerItem(Context context,
                        String name,
-                       Boolean isActivated) {
+                       boolean isActivated) {
         super();
         this.context = context;
         this.name = name;
@@ -64,18 +66,51 @@ public class ManagerItem implements Serializable {
         int version = Packages.getOverlaySubstratumVersion(
                 context,
                 this.name);
-        Boolean newUpdate = (version != 0) && (version <= BuildConfig.VERSION_CODE);
+        boolean newUpdate = (version != 0) && (version <= BuildConfig.VERSION_CODE);
         String metadata = Packages.getOverlayMetadata(
                 context,
                 this.name,
                 References.metadataOverlayParent);
         if ((metadata != null) && !metadata.isEmpty() && newUpdate) {
-            this.themeName = Packages.getPackageName(context, metadata);
+            this.themeName = String.format("%s (%s)",
+                    Packages.getPackageName(context, metadata),
+                    Packages.getAppVersion(context, this.name));
         } else {
-            this.themeName = "";
+            this.themeName = null;
         }
         this.updateEnabledOverlays(isActivated);
         this.setLabelName(context);
+
+        for (int i = 0; i < metadataOverlayTypes.length; i++) {
+            String overlayMetadata = Packages.getOverlayMetadata(
+                    context,
+                    this.name,
+                    metadataOverlayTypes[i]);
+
+            if ((overlayMetadata != null) && !overlayMetadata.isEmpty()) {
+                String typeEntry = overlayMetadata.replace("_", " ");
+                switch (i) {
+                    case 0:
+                        this.setType1a(typeEntry);
+                        break;
+                    case 1:
+                        this.setType1b(typeEntry);
+                        break;
+                    case 2:
+                        this.setType1c(typeEntry);
+                        break;
+                    case 3:
+                        this.setType2(typeEntry);
+                        break;
+                    case 4:
+                        this.setType3(typeEntry);
+                        break;
+                    case 5:
+                        this.setType4(typeEntry);
+                        break;
+                }
+            }
+        }
     }
 
     int getActivationValue() {
@@ -104,8 +139,13 @@ public class ManagerItem implements Serializable {
 
     public void updateEnabledOverlays(boolean isActivated) {
         this.activationValue =
-                ((isActivated) ? this.context.getColor(R.color.overlay_installed_list_entry) :
-                        this.context.getColor(R.color.overlay_not_enabled_list_entry));
+                (MainActivity.instanceBasedAndromedaFailure ?
+                        this.context.getColor(R.color.overlay_installed_not_active) :
+                        ((isActivated) ?
+                                this.context.getColor(R.color.overlay_installed_list_entry) :
+                                this.context.getColor(R.color.overlay_not_enabled_list_entry)
+                        )
+                );
     }
 
     public String getType1a() {
@@ -157,9 +197,6 @@ public class ManagerItem implements Serializable {
     }
 
     public String getThemeName() {
-        if (this.themeName == null) {
-            this.themeName = this.context.getString(R.string.reboot_awaiting_manager_title);
-        }
         return this.themeName;
     }
 
@@ -168,9 +205,6 @@ public class ManagerItem implements Serializable {
     }
 
     public String getLabelName() {
-        if (this.labelName == null) {
-            this.labelName = this.context.getString(R.string.reboot_awaiting_manager_title);
-        }
         return this.labelName;
     }
 

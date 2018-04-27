@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
 
+import projekt.substratum.MainActivity;
 import projekt.substratum.R;
 import projekt.substratum.activities.shortcuts.AppShortcutLaunch;
 import projekt.substratum.common.Broadcasts;
@@ -47,57 +48,69 @@ import projekt.substratum.common.Systems;
 import projekt.substratum.services.notification.UnsupportedThemeReceiver;
 
 import static projekt.substratum.common.Internal.THEME_PID;
+import static projekt.substratum.common.References.ANDROMEDA_PACKAGE;
 import static projekt.substratum.common.References.SST_ADDON_PACKAGE;
 import static projekt.substratum.common.References.metadataSamsungSupport;
 
 public class PackageModificationDetector extends BroadcastReceiver {
 
     private static final String TAG = "SubstratumDetector";
-    private Context context;
+
+    public static PendingIntent getPendingIntent(Context context, String packageName) {
+        Intent myIntent = new Intent(context, AppShortcutLaunch.class);
+        myIntent.putExtra(THEME_PID, packageName);
+        return PendingIntent.getActivity(
+                context,
+                ThreadLocalRandom.current().nextInt(0, 10000),
+                myIntent,
+                PendingIntent.FLAG_CANCEL_CURRENT
+        );
+    }
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        this.context = context;
 
         Uri packageName = intent.getData();
-        String package_name;
+        String packageName1;
         if (packageName != null) {
-            package_name = packageName.toString().substring(8);
+            packageName1 = packageName.toString().substring(8);
         } else {
             return;
         }
 
-        if (package_name.equals(SST_ADDON_PACKAGE)) {
+        if (packageName1.equals(SST_ADDON_PACKAGE)) {
             Broadcasts.sendKillMessage(context);
             return;
+        } else if (packageName1.equals(ANDROMEDA_PACKAGE)) {
+            System.exit(0);
         }
 
-        if (Systems.isSamsungDevice(context)) {
+        if (Systems.isSamsungDevice(context) || MainActivity.instanceBasedAndromedaFailure) {
             Broadcasts.sendOverlayRefreshMessage(context);
             Broadcasts.sendRefreshManagerMessage(context);
         }
 
         try {
             ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(
-                    package_name, PackageManager.GET_META_DATA);
+                    packageName1, PackageManager.GET_META_DATA);
             if (appInfo.metaData != null) {
                 // First, check if the app installed is actually a substratum overlay
-                String check_overlay_parent =
+                String checkOverlayParent =
                         appInfo.metaData.getString(References.metadataOverlayParent);
-                String check_overlay_target =
+                String checkOverlayTarget =
                         appInfo.metaData.getString(References.metadataOverlayTarget);
-                if ((check_overlay_parent != null) && (check_overlay_target != null)) {
+                if ((checkOverlayParent != null) && (checkOverlayTarget != null)) {
                     Broadcasts.sendOverlayRefreshMessage(context);
                     Broadcasts.sendRefreshManagerMessage(context);
                     return;
                 }
 
                 // Then, check if the app installed is actually a substratum theme
-                String check_theme_name =
+                String checkThemeName =
                         appInfo.metaData.getString(References.metadataName);
-                String check_theme_author =
+                String checkThemeAuthor =
                         appInfo.metaData.getString(References.metadataAuthor);
-                if ((check_theme_name == null) && (check_theme_author == null)) return;
+                if ((checkThemeName == null) && (checkThemeAuthor == null)) return;
             } else {
                 return;
             }
@@ -106,30 +119,30 @@ public class PackageModificationDetector extends BroadcastReceiver {
         }
 
         // When it is a proper theme, then we can continue
-        Boolean replacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
+        boolean replacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
 
         // Let's add it to the list of installed themes on shared prefs
         SharedPreferences mainPrefs = PreferenceManager.getDefaultSharedPreferences(context);
-        Set<String> installed_themes =
+        Set<String> installedThemes =
                 mainPrefs.getStringSet("installed_themes", new HashSet<>());
-        Set<String> installed_sorted = new TreeSet<>();
+        Set<String> installedSorted = new TreeSet<>();
 
-        int beginning_size = installed_themes.size();
-        if (!installed_themes.contains(package_name)) {
-            installed_themes.add(package_name);
-            installed_sorted.addAll(installed_themes);
+        int beginningSize = installedThemes.size();
+        if (!installedThemes.contains(packageName1)) {
+            installedThemes.add(packageName1);
+            installedSorted.addAll(installedThemes);
         }
-        if (installed_themes.size() > beginning_size) {
-            mainPrefs.edit().putStringSet("installed_themes", installed_sorted).apply();
+        if (installedThemes.size() > beginningSize) {
+            mainPrefs.edit().putStringSet("installed_themes", installedSorted).apply();
         }
 
         try {
             ApplicationInfo appInfo = context.getPackageManager()
-                    .getApplicationInfo(package_name, PackageManager.GET_META_DATA);
+                    .getApplicationInfo(packageName1, PackageManager.GET_META_DATA);
             if (appInfo.metaData != null) {
                 // Legacy check to see if an OMS theme is guarded from being installed on legacy
-                Boolean check_legacy = appInfo.metaData.getBoolean(References.metadataLegacy);
-                if (!Systems.checkOMS(context) && !check_legacy) {
+                boolean checkLegacy = appInfo.metaData.getBoolean(References.metadataLegacy);
+                if (!Systems.checkOMS(context) && !checkLegacy) {
                     Log.e(TAG, "Device is non-OMS, while an " +
                             "OMS theme is installed, aborting operation!");
 
@@ -139,48 +152,47 @@ public class PackageModificationDetector extends BroadcastReceiver {
                                     References.metadataName));
 
                     // Jot the notification id
-                    int notification_id = ThreadLocalRandom.current().nextInt(0, 10000);
+                    int notificationId = ThreadLocalRandom.current().nextInt(0, 10000);
 
                     // Create an Intent for the BroadcastReceiver
                     Intent buttonIntent = new Intent(context, UnsupportedThemeReceiver.class);
-                    buttonIntent.putExtra("package_to_uninstall", package_name);
-                    buttonIntent.putExtra("notification_to_close", notification_id);
+                    buttonIntent.putExtra("package_to_uninstall", packageName1);
+                    buttonIntent.putExtra("notification_to_close", notificationId);
 
                     // Create the PendingIntent
                     PendingIntent btPendingIntent =
                             PendingIntent.getBroadcast(
                                     context,
-                                    notification_id,
+                                    notificationId,
                                     buttonIntent,
                                     PendingIntent.FLAG_CANCEL_CURRENT
                             );
 
-                    NotificationManager mNotifyManager = (NotificationManager) context
+                    NotificationManager notificationManager = (NotificationManager) context
                             .getSystemService(Context.NOTIFICATION_SERVICE);
-                    NotificationCompat.Builder mBuilder = new
+                    NotificationCompat.Builder builder = new
                             NotificationCompat.Builder(context,
-                            References.DEFAULT_NOTIFICATION_CHANNEL_ID);
-                    mBuilder.setContentTitle(context.getString(
-                            R.string.failed_to_install_title_notification));
-                    mBuilder.setContentText(parse);
-                    mBuilder.setAutoCancel(true);
-                    mBuilder.setContentIntent(btPendingIntent);
-                    mBuilder.addAction(android.R.color.transparent,
-                            context.getString(R.string.refused_to_install_notification_button),
-                            btPendingIntent);
-                    mBuilder.setSmallIcon(R.drawable.notification_warning_icon);
-                    mBuilder.setPriority(Notification.PRIORITY_MAX);
-                    if (mNotifyManager != null) {
-                        mNotifyManager.notify(notification_id, mBuilder.build());
+                            References.DEFAULT_NOTIFICATION_CHANNEL_ID)
+                            .setContentTitle(context.getString(
+                                    R.string.failed_to_install_title_notification))
+                            .setContentText(parse)
+                            .setAutoCancel(true)
+                            .setContentIntent(btPendingIntent)
+                            .addAction(android.R.color.transparent,
+                                    context.getString(R.string.refused_to_install_notification_button), btPendingIntent)
+                            .setSmallIcon(R.drawable.notification_warning_icon)
+                            .setPriority(Notification.PRIORITY_MAX);
+                    if (notificationManager != null) {
+                        notificationManager.notify(notificationId, builder.build());
                     }
                     return;
                 }
 
                 // Samsung check to see if an intentionally disable substratum theme was installed
                 // on a Samsung device
-                Boolean samsung_support = appInfo.metaData.getBoolean(metadataSamsungSupport, true);
-                if (!samsung_support &&
-                        (Systems.isSamsungDevice(context) || Systems.isNewSamsungDevice(context))) {
+                boolean samsungSupport = appInfo.metaData.getBoolean(metadataSamsungSupport, true);
+                if (!samsungSupport &&
+                        (Systems.isSamsungDevice(context) || Systems.isNewSamsungDevice())) {
                     Log.e(TAG, "Theme does not support Samsung, yet the theme was installed, " +
                             "aborting operation!");
 
@@ -190,93 +202,90 @@ public class PackageModificationDetector extends BroadcastReceiver {
                                     References.metadataName));
 
                     // Jot the notification id
-                    int notification_id = ThreadLocalRandom.current().nextInt(0, 10000);
+                    int notificationId = ThreadLocalRandom.current().nextInt(0, 10000);
 
                     // Create an Intent for the BroadcastReceiver
                     Intent buttonIntent = new Intent(context, UnsupportedThemeReceiver.class);
-                    buttonIntent.putExtra("package_to_uninstall", package_name);
-                    buttonIntent.putExtra("notification_to_close", notification_id);
+                    buttonIntent.putExtra("package_to_uninstall", packageName1);
+                    buttonIntent.putExtra("notification_to_close", notificationId);
 
                     // Create the PendingIntent
                     PendingIntent btPendingIntent =
                             PendingIntent.getBroadcast(context, 0, buttonIntent, 0);
 
-                    NotificationManager mNotifyManager = (NotificationManager) context
+                    NotificationManager notificationManager = (NotificationManager) context
                             .getSystemService(Context.NOTIFICATION_SERVICE);
-                    NotificationCompat.Builder mBuilder = new
+                    NotificationCompat.Builder builder = new
                             NotificationCompat.Builder(context,
-                            References.DEFAULT_NOTIFICATION_CHANNEL_ID);
-                    mBuilder.setContentTitle(context.getString(
-                            R.string.refused_to_install_title_notification));
-                    mBuilder.setContentText(parse);
-                    mBuilder.setAutoCancel(true);
-                    mBuilder.setContentIntent(btPendingIntent);
-                    mBuilder.addAction(android.R.color.transparent,
-                            context.getString(R.string.refused_to_install_notification_button),
-                            btPendingIntent);
-                    mBuilder.setSmallIcon(R.drawable.notification_warning_icon);
-                    mBuilder.setPriority(Notification.PRIORITY_MAX);
-                    if (mNotifyManager != null) {
-                        mNotifyManager.notify(notification_id, mBuilder.build());
+                            References.DEFAULT_NOTIFICATION_CHANNEL_ID)
+                            .setContentTitle(context.getString(
+                                    R.string.refused_to_install_title_notification))
+                            .setContentText(parse)
+                            .setAutoCancel(true)
+                            .setContentIntent(btPendingIntent)
+                            .addAction(android.R.color.transparent,
+                                    context.getString(R.string.refused_to_install_notification_button), btPendingIntent)
+                            .setSmallIcon(R.drawable.notification_warning_icon)
+                            .setPriority(Notification.PRIORITY_MAX);
+                    if (notificationManager != null) {
+                        notificationManager.notify(notificationId, builder.build());
                     }
                     return;
                 }
             }
-        } catch (Exception e) {
-            // Suppress warning
+        } catch (Exception ignored) {
         }
 
         if (replacing) {
             // We need to check if this is a new install or not
-            Log.d(TAG, '\'' + package_name + "' has been updated.");
-            NotificationManager mNotifyManager = (NotificationManager) context
+            Log.d(TAG, '\'' + packageName1 + "' has been updated.");
+            NotificationManager notificationManager = (NotificationManager) context
                     .getSystemService(Context.NOTIFICATION_SERVICE);
-            NotificationCompat.Builder mBuilder = new
+            NotificationCompat.Builder builder = new
                     NotificationCompat.Builder(context,
-                    References.DEFAULT_NOTIFICATION_CHANNEL_ID);
-            mBuilder.setContentTitle(
-                    Packages.getPackageName(context, package_name) + ' ' +
-                            context.getString(R.string.notification_theme_updated));
-            mBuilder.setContentText(context.getString(R.string.notification_theme_updated_content));
-            mBuilder.setAutoCancel(true);
-            mBuilder.setContentIntent(getPendingIntent(package_name));
-            mBuilder.setSmallIcon(R.drawable.notification_updated);
-            mBuilder.setLargeIcon(Packages.getBitmapFromDrawable(
-                    Packages.getAppIcon(context, package_name)));
-            mBuilder.setPriority(Notification.PRIORITY_MAX);
-            if (mNotifyManager != null) {
-                mNotifyManager.notify(
-                        ThreadLocalRandom.current().nextInt(0, 1000), mBuilder.build());
+                    References.DEFAULT_NOTIFICATION_CHANNEL_ID)
+                    .setContentTitle(
+                            Packages.getPackageName(context,
+                                    packageName1) + ' ' + context.getString(R.string.notification_theme_updated))
+                    .setContentText(context.getString(R.string.notification_theme_updated_content))
+                    .setAutoCancel(true)
+                    .setContentIntent(getPendingIntent(context, packageName1))
+                    .setSmallIcon(R.drawable.notification_updated)
+                    .setLargeIcon(Packages.getBitmapFromDrawable(
+                            Packages.getAppIcon(context, packageName1)))
+                    .setPriority(Notification.PRIORITY_MAX);
+            if (notificationManager != null) {
+                notificationManager.notify(
+                        ThreadLocalRandom.current().nextInt(0, 1000), builder.build());
             }
         } else {
-            NotificationManager mNotifyManager = (NotificationManager) context
+            NotificationManager notificationManager = (NotificationManager) context
                     .getSystemService(Context.NOTIFICATION_SERVICE);
-            NotificationCompat.Builder mBuilder = new
+            NotificationCompat.Builder builder = new
                     NotificationCompat.Builder(context,
-                    References.DEFAULT_NOTIFICATION_CHANNEL_ID);
-            mBuilder.setContentTitle(
-                    Packages.getPackageName(context, package_name) + ' ' +
-                            context.getString(R.string.notification_theme_installed));
-            mBuilder.setContentText(
-                    context.getString(R.string.notification_theme_installed_content));
-            mBuilder.setAutoCancel(true);
-            mBuilder.setContentIntent(getPendingIntent(package_name));
-            mBuilder.setSmallIcon(R.drawable.notification_icon);
-            mBuilder.setLargeIcon(BitmapFactory.decodeResource(
-                    context.getResources(), R.mipmap.main_launcher));
-            mBuilder.setPriority(Notification.PRIORITY_MAX);
-            if (mNotifyManager != null) {
-                mNotifyManager.notify(
-                        ThreadLocalRandom.current().nextInt(0, 1000), mBuilder.build());
+                    References.DEFAULT_NOTIFICATION_CHANNEL_ID)
+                    .setContentTitle(
+                            Packages.getPackageName(context, packageName1) + ' ' +
+                                    context.getString(
+                                            R.string.notification_theme_installed))
+                    .setContentText(
+                            context.getString(
+                                    R.string.notification_theme_installed_content))
+                    .setAutoCancel(true)
+                    .setContentIntent(getPendingIntent(context, packageName1))
+                    .setAutoCancel(true)
+                    .setContentIntent(getPendingIntent(context, packageName1))
+                    .setSmallIcon(R.drawable.notification_icon)
+                    .setLargeIcon(BitmapFactory.decodeResource(
+                            context.getResources(),
+                            R.mipmap.main_launcher))
+                    .setPriority(Notification.PRIORITY_MAX);
+            if (notificationManager != null) {
+                notificationManager.notify(
+                        ThreadLocalRandom.current().nextInt(0, 1000), builder.build());
             }
         }
         Broadcasts.sendRefreshMessage(context);
-        Broadcasts.sendActivityFinisherMessage(context, package_name);
-    }
-
-    private PendingIntent getPendingIntent(String package_name) {
-        Intent myIntent = new Intent(context, AppShortcutLaunch.class);
-        myIntent.putExtra(THEME_PID, package_name);
-        return PendingIntent.getActivity(context, 0, myIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        Broadcasts.sendActivityFinisherMessage(context, packageName1);
     }
 }

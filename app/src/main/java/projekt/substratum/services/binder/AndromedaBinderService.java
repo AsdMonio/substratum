@@ -18,21 +18,18 @@
 
 package projekt.substratum.services.binder;
 
-import android.app.NotificationManager;
 import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
-import android.service.notification.StatusBarNotification;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import projekt.andromeda.IAndromedaInterface;
 import projekt.substratum.R;
-import projekt.substratum.common.Broadcasts;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Systems;
 import projekt.substratum.common.platform.AndromedaService;
@@ -44,18 +41,22 @@ public class AndromedaBinderService extends Service implements ServiceConnection
 
     private static final String TAG = "AndromedaBinderService";
     private static IAndromedaInterface iAndromedaInterface;
-    private boolean mBound;
+    private boolean bound;
 
     public static IAndromedaInterface getAndromedaInterface() {
         return iAndromedaInterface;
     }
 
     private void bindAndromeda() {
-        if (Systems.checkAndromeda(this) && !mBound) {
+        if (Systems.checkAndromeda(this) && !bound) {
             Intent intent = new Intent(ANDROMEDA_BINDED);
             intent.setPackage(ANDROMEDA_PACKAGE);
-            if (!bindService(intent, this, Context.BIND_AUTO_CREATE)) {
-                stopSelf();
+            try {
+                if (!bindService(intent, this, Context.BIND_AUTO_CREATE)) {
+                    stopSelf();
+                }
+            } catch (Exception ignored) {
+                // Don't crash substratum on andromeda update
             }
         }
     }
@@ -65,7 +66,7 @@ public class AndromedaBinderService extends Service implements ServiceConnection
         bindAndromeda();
 
         new Thread(() -> {
-            while (!mBound) {
+            while (!bound) {
                 try {
                     Thread.sleep(100L);
                 } catch (InterruptedException e) {
@@ -82,20 +83,11 @@ public class AndromedaBinderService extends Service implements ServiceConnection
                     }
 
                     if (!AndromedaService.checkServerActivity()) {
-                        sendBadNotification(getApplicationContext());
                         failed = true;
                     }
                 }
-            } else {
-                sendBadNotification(getApplicationContext());
             }
         }).start();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        iAndromedaInterface = null;
     }
 
     @Nullable
@@ -107,56 +99,41 @@ public class AndromedaBinderService extends Service implements ServiceConnection
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         iAndromedaInterface = IAndromedaInterface.Stub.asInterface(service);
-        mBound = true;
-        Log.d(TAG, "Substratum has successfully binded with the Andromeda module.");
-        if ((iAndromedaInterface != null) && AndromedaService.checkServerActivity()) {
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(
-                    getApplicationContext(), References.ANDROMEDA_NOTIFICATION_CHANNEL_ID);
-            builder.setContentTitle(getString(R.string.andromeda_notification_title))
-                    .setContentText(getString(R.string.andromeda_notification_text))
-                    .setSmallIcon(R.drawable.notification_icon);
-            startForeground(2018, builder.build());
-        } else {
+        bound = true;
+        try {
+            if ((iAndromedaInterface != null) && AndromedaService.checkServerActivity()) {
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(
+                        getApplicationContext(), References.ANDROMEDA_NOTIFICATION_CHANNEL_ID);
+                builder.setContentTitle(getString(R.string.andromeda_notification_title))
+                        .setContentText(getString(R.string.andromeda_notification_text))
+                        .setSmallIcon(R.drawable.notification_icon);
+                startForeground(2018, builder.build());
+                Log.d(TAG, "Substratum has successfully binded with the Andromeda module.");
+            } else {
+                stopSelf();
+            }
+        } catch (Exception e) {
             stopSelf();
         }
     }
 
     @Override
-    public void onServiceDisconnected(ComponentName name) {
+    public void onDestroy() {
+        super.onDestroy();
         iAndromedaInterface = null;
-        mBound = false;
+        bound = false;
         Log.d(TAG, "Substratum has successfully unbinded with the Andromeda module.");
+
     }
 
-    private void sendBadNotification(Context context) {
-        NotificationManager mNotifyMgr =
-                (NotificationManager)
-                        getApplicationContext().getSystemService(NOTIFICATION_SERVICE);
-        boolean isBadNotificationShowing = false;
-        int badNotificationId = 2017;
-        if (mNotifyMgr != null) {
-            StatusBarNotification[] notifications = mNotifyMgr.getActiveNotifications();
-            for (StatusBarNotification notification : notifications) {
-                if (notification.getId() == badNotificationId) {
-                    isBadNotificationShowing = true;
-                }
-            }
-        }
-        if ((mNotifyMgr != null) && !isBadNotificationShowing) {
-            NotificationCompat.Builder mBuilder = new NotificationCompat.Builder
-                    (getApplicationContext(), References.ANDROMEDA_NOTIFICATION_CHANNEL_ID);
-            mBuilder.setContentTitle(
-                    getApplicationContext().getString(
-                            R.string.andromeda_notification_title_negation));
-            mBuilder.setContentText(
-                    getApplicationContext().getString(
-                            R.string.andromeda_notification_text_negation));
-            mBuilder.setOngoing(false);
-            mBuilder.setSmallIcon(R.drawable.notification_warning_icon);
-            mNotifyMgr.notify(badNotificationId, mBuilder.build());
-        }
+    @Override
+    public void onBindingDied(ComponentName name) {
+        onDestroy();
+    }
 
-        Broadcasts.sendAndromedaRefreshMessage(context);
-        stopSelf();
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {
+        onDestroy();
     }
 }

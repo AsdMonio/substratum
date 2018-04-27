@@ -22,38 +22,38 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 
 public class ValidatorInfo {
-    private String package_name;
+    private String packageName;
     private Context context;
-    private Boolean mVerified;
-    private Boolean mCommons;
-    private Drawable mDrawable;
-    private ValidatorError mValidatorError;
+    private boolean verified;
+    private boolean commons;
+    private Drawable drawable;
+    private ValidatorError validatorError;
 
     public ValidatorInfo(Context context,
-                         String package_name,
-                         Boolean verified,
-                         Boolean commons) {
+                         String packageName,
+                         boolean verified,
+                         boolean commons) {
         super();
         this.context = context;
-        this.package_name = package_name;
-        this.mVerified = verified;
-        this.mCommons = commons;
+        this.packageName = packageName;
+        this.verified = verified;
+        this.commons = commons;
     }
 
-    public Boolean getCommons() {
-        return this.mCommons;
+    boolean getCommons() {
+        return this.commons;
     }
 
     ValidatorError getPackageError() {
-        return this.mValidatorError;
+        return this.validatorError;
     }
 
     public void setPackageError(ValidatorError validatorError) {
-        this.mValidatorError = validatorError;
+        this.validatorError = validatorError;
     }
 
     public String getPackageName() {
-        return this.package_name;
+        return this.packageName;
     }
 
     public Context getContext() {
@@ -61,14 +61,14 @@ public class ValidatorInfo {
     }
 
     public Drawable getDrawable() {
-        return this.mDrawable;
+        return this.drawable;
     }
 
     public void setDrawable(Drawable drawable) {
-        this.mDrawable = drawable;
+        this.drawable = drawable;
     }
 
-    Boolean getVerification() {
-        return this.mVerified;
+    boolean getVerification() {
+        return this.verified;
     }
 }

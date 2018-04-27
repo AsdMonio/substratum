@@ -18,27 +18,22 @@
 
 package projekt.substratum.adapters.tabs.wallpapers;
 
-import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.graphics.ColorMatrix;
-import android.graphics.ColorMatrixColorFilter;
+import android.content.SharedPreferences;
+import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.PowerManager;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.ImageView;
-import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
 
@@ -47,20 +42,19 @@ import java.lang.ref.WeakReference;
 import java.util.List;
 
 import projekt.substratum.R;
+import projekt.substratum.databinding.TabWallpaperItemBinding;
 import projekt.substratum.util.helpers.FileDownloader;
 
-import static com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade;
-import static com.bumptech.glide.request.RequestOptions.centerCropTransform;
-import static projekt.substratum.common.References.FADE_FROM_GRAYSCALE_TO_COLOR_DURATION;
+import static projekt.substratum.common.References.setRecyclerViewAnimations;
 
 public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.ViewHolder> {
-    private List<WallpaperEntries> information;
+    private List<WallpaperItem> information;
     private ProgressDialog mProgressDialog;
     private Context context;
     private PowerManager.WakeLock mWakeLock;
     private AsyncTask current_download;
 
-    public WallpaperAdapter(List<WallpaperEntries> information) {
+    public WallpaperAdapter(List<WallpaperItem> information) {
         super();
         this.information = information;
     }
@@ -69,32 +63,24 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.View
     public WallpaperAdapter.ViewHolder onCreateViewHolder(ViewGroup viewGroup,
                                                           int i) {
         View view = LayoutInflater.from(
-                viewGroup.getContext()).inflate(R.layout.wallpaper_entry_card, viewGroup, false);
+                viewGroup.getContext()).inflate(R.layout.tab_wallpaper_item, viewGroup, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(ViewHolder viewHolder,
                                  int pos) {
-        WallpaperEntries wallpaperEntry = this.information.get(pos);
-        this.context = wallpaperEntry.getContext();
+        WallpaperItem wallpaperItem = information.get(pos);
+        TabWallpaperItemBinding viewHolderBinding = viewHolder.getBinding();
+        context = wallpaperItem.getContext();
 
-        Glide.with(this.context)
-                .load(wallpaperEntry.getWallpaperPreview())
-                .apply(centerCropTransform())
-                .transition(withCrossFade())
-                .into(viewHolder.imageView);
-
-        viewHolder.wallpaperName.setText(wallpaperEntry.getWallpaperName());
-        viewHolder.cardView.setOnClickListener(view -> {
-            AlertDialog.Builder builder = new AlertDialog.Builder(this.context);
+        viewHolderBinding.wallpaperCard.setOnClickListener(view -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(context);
             ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(
-                    this.context, R.layout.wallpaper_dialog_listview);
+                    context, R.layout.tab_wallpaper_dialog);
             arrayAdapter.add(this.context.getString(R.string.wallpaper_dialog_wallpaper));
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                arrayAdapter.add(this.context.getString(R.string.wallpaper_dialog_lockscreen));
-                arrayAdapter.add(this.context.getString(R.string.wallpaper_dialog_wallpaper_both));
-            }
+            arrayAdapter.add(this.context.getString(R.string.wallpaper_dialog_lockscreen));
+            arrayAdapter.add(this.context.getString(R.string.wallpaper_dialog_wallpaper_both));
             builder.setCancelable(false);
             builder.setNegativeButton(
                     android.R.string.cancel,
@@ -112,27 +98,23 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.View
                         // Download the image
                         this.current_download = new downloadWallpaper(
                                 this,
-                                wallpaperEntry.getCallingActivity()
+                                wallpaperItem.getCallingActivity()
                         ).execute(
-                                wallpaperEntry.getWallpaperLink(),
+                                wallpaperItem.getWallpaperLink(),
                                 mode,
-                                wallpaperEntry.getWallpaperName());
+                                wallpaperItem.getWallpaperName());
                         break;
                 }
             });
             builder.show();
         });
-
-        // Prettify the UI with fading desaturating colors!
-        ColorMatrix matrix = new ColorMatrix();
-        ValueAnimator animation = ValueAnimator.ofFloat(0f, 1f);
-        animation.setDuration(FADE_FROM_GRAYSCALE_TO_COLOR_DURATION);
-        animation.addUpdateListener(animation1 -> {
-            matrix.setSaturation(animation1.getAnimatedFraction());
-            ColorMatrixColorFilter filter = new ColorMatrixColorFilter(matrix);
-            viewHolder.imageView.setColorFilter(filter);
-        });
-        animation.start();
+        viewHolderBinding.setWallpaperItem(wallpaperItem);
+        viewHolderBinding.executePendingBindings();
+        SharedPreferences prefs =
+                PreferenceManager.getDefaultSharedPreferences(wallpaperItem.getContext());
+        if (!prefs.getBoolean("lite_mode", false)) {
+            setRecyclerViewAnimations(viewHolderBinding.wallpaperImage);
+        }
     }
 
     @Override
@@ -146,7 +128,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.View
         private WeakReference<Activity> activity;
         private String wallpaperLink;
         private String extension;
-        private String directory_output;
+        private String directoryOutput;
         private String wallpaperName;
 
         downloadWallpaper(WallpaperAdapter wallpaperAdapter,
@@ -207,14 +189,14 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.View
                 // InformationActivity
                 CropImage.activity(Uri.fromFile(new File(
                         wallpaperAdapter.context.getCacheDir().getAbsolutePath() +
-                                '/' + this.directory_output)))
+                                '/' + this.directoryOutput)))
                         .setGuidelines(CropImageView.Guidelines.ON)
                         .setFixAspectRatio(false)
                         .setInitialCropWindowPaddingRatio((float) 0)
                         .setActivityTitle(this.wallpaperName)
                         .setOutputUri(Uri.fromFile(new File(
                                 wallpaperAdapter.context.getCacheDir().getAbsolutePath() +
-                                        '/' + this.directory_output)))
+                                        '/' + this.directoryOutput)))
                         .start(this.activity.get());
             }
         }
@@ -229,13 +211,13 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.View
                 } else {
                     this.extension = ".jpg";
                 }
-                this.directory_output = sUrl[1] + this.extension;
+                this.directoryOutput = sUrl[1] + this.extension;
                 this.wallpaperName = sUrl[2];
 
                 FileDownloader.init(wallpaperAdapter.context,
                         this.wallpaperLink,
                         "",
-                        this.directory_output
+                        this.directoryOutput
                 );
             }
             return null;
@@ -243,15 +225,15 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.View
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        CardView cardView;
-        TextView wallpaperName;
-        ImageView imageView;
+        TabWallpaperItemBinding binding;
 
         ViewHolder(View view) {
             super(view);
-            this.cardView = view.findViewById(R.id.wallpaperCard);
-            this.imageView = view.findViewById(R.id.wallpaperImage);
-            this.wallpaperName = view.findViewById(R.id.wallpaperName);
+            binding = DataBindingUtil.bind(view);
+        }
+
+        TabWallpaperItemBinding getBinding() {
+            return binding;
         }
     }
 }

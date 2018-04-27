@@ -47,27 +47,27 @@ public enum ReadCloudWallpaperFile {
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(fXmlFile);
             doc.getDocumentElement().normalize();
-            NodeList nList = doc.getElementsByTagName("wallpaper");
+            NodeList nodeList = doc.getElementsByTagName("wallpaper");
 
             Map<String, String> map = new TreeMap<>();
-            for (int temp = 0; temp < nList.getLength(); temp++) {
-                Node nNode = nList.item(temp);
-                if ((int) nNode.getNodeType() == (int) Node.ELEMENT_NODE) {
-                    Element eElement = (Element) nNode;
+            for (int temp = 0; temp < nodeList.getLength(); temp++) {
+                Node node = nodeList.item(temp);
+                if ((int) node.getNodeType() == (int) Node.ELEMENT_NODE) {
+                    Element element = (Element) node;
 
                     // Replace all spaces with a tilde first, as tilde "~" is lower priority than
                     // "-", we have to put this first.
-                    String addon_download_name = eElement.getAttribute("id")
+                    String addonDownloadName = element.getAttribute("id")
                             .replaceAll("\\s+", "~");
-                    String addon_download_link =
-                            eElement.getElementsByTagName("link").item(0).getTextContent();
-                    String addon_preview_link =
-                            eElement.getElementsByTagName("preview").item(0).getTextContent();
+                    String addonDownloadLink =
+                            element.getElementsByTagName("link").item(0).getTextContent();
+                    String addonPreviewLink =
+                            element.getElementsByTagName("preview").item(0).getTextContent();
 
                     String[] finalArray = {
-                            addon_download_name,
-                            addon_download_link,
-                            addon_preview_link
+                            addonDownloadName,
+                            addonDownloadLink,
+                            addonPreviewLink
                     };
 
                     map.put(finalArray[0], finalArray[1]);
@@ -75,7 +75,7 @@ public enum ReadCloudWallpaperFile {
                 }
             }
             return map;
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             return new TreeMap<String, String>();
         }
     }

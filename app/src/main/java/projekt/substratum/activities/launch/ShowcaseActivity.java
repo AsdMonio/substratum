@@ -22,34 +22,26 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.ActivityNotFoundException;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
+import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.preference.PreferenceManager;
+import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
-import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
-
-import com.mikepenz.materialdrawer.Drawer;
-import com.mikepenz.materialdrawer.DrawerBuilder;
-import com.mikepenz.materialdrawer.model.PrimaryDrawerItem;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
@@ -57,53 +49,39 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
 import projekt.substratum.R;
-import projekt.substratum.Substratum;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Systems;
+import projekt.substratum.databinding.ShowcaseActivityBinding;
 import projekt.substratum.fragments.ShowcaseTab;
 import projekt.substratum.util.helpers.FileDownloader;
+import projekt.substratum.util.helpers.LocaleHelper;
 import projekt.substratum.util.helpers.MD5;
 import projekt.substratum.util.readers.ReadShowcaseTabsFile;
 import projekt.substratum.util.views.Lunchbar;
 
-import static projekt.substratum.common.Internal.ANDROMEDA_RECEIVER;
 import static projekt.substratum.common.Internal.SHOWCASE_CACHE;
 
 public class ShowcaseActivity extends AppCompatActivity {
 
     private static final String TAG = "ShowcaseActivity";
-    @BindView(R.id.no_network)
-    RelativeLayout no_network;
-    @BindView(R.id.toolbar)
-    Toolbar toolbar;
-    @BindView(android.R.id.content)
-    ViewGroup masterView;
-    private LocalBroadcastManager localBroadcastManager;
-    private AndromedaReceiver andromedaReceiver;
-    private Bundle savedInstanceState;
-    private Drawer drawer;
+    private static final String showcaseTabsFile = "showcase_tabs.xml";
+    private static final String showcaseTabsTempFile = "showcase_tabs-temp.xml";
+    private RelativeLayout noNetwork;
+    private Toolbar toolbar;
+    private ViewGroup masterView;
+    private NavigationView navigationView;
+    private DrawerLayout drawerLayout;
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (Systems.isAndromedaDevice(getApplicationContext())) {
-            try {
-                localBroadcastManager.unregisterReceiver(andromedaReceiver);
-            } catch (Exception e) {
-                // Unregistered already
-            }
-        }
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase));
     }
 
     @Override
     public void onBackPressed() {
-        if (drawer.isDrawerOpen()) {
-            drawer.closeDrawer();
-        } else if (drawer.getCurrentSelectedPosition() != 0) {
-            drawer.setSelectionAtPosition(0);
+        if (drawerLayout.isDrawerOpen(navigationView)) {
+            drawerLayout.closeDrawer(navigationView);
         } else {
             super.onBackPressed();
         }
@@ -115,7 +93,7 @@ public class ShowcaseActivity extends AppCompatActivity {
             case android.R.id.home:
                 onBackPressed();
                 return true;
-            case R.id.search:
+            case R.id.showcase:
                 try {
                     String playURL;
                     if (Systems.checkOMS(getApplicationContext())) {
@@ -139,12 +117,10 @@ public class ShowcaseActivity extends AppCompatActivity {
                 launchShowcaseInfo();
                 return true;
             case R.id.filter:
-                if (drawer != null) {
-                    if (drawer.isDrawerOpen()) {
-                        drawer.closeDrawer();
-                    } else {
-                        drawer.openDrawer();
-                    }
+                if (drawerLayout.isDrawerOpen(navigationView)) {
+                    drawerLayout.closeDrawer(navigationView);
+                } else {
+                    drawerLayout.openDrawer(navigationView);
                 }
 
         }
@@ -162,30 +138,32 @@ public class ShowcaseActivity extends AppCompatActivity {
      */
     private void refreshLayout() {
         if (References.isNetworkAvailable(getApplicationContext())) {
-            no_network.setVisibility(View.GONE);
+            noNetwork.setVisibility(View.GONE);
             DownloadTabs downloadTabs = new DownloadTabs(this);
-            downloadTabs.execute(getString(R.string.showcase_tabs), "showcase_tabs.xml");
+            downloadTabs.execute(getString(R.string.showcase_tabs), showcaseTabsFile);
         } else {
-            no_network.setVisibility(View.VISIBLE);
+            drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+            noNetwork.setVisibility(View.VISIBLE);
         }
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        SharedPreferences prefs =
-                PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        boolean bottomBarUi = !prefs.getBoolean("advanced_ui", false);
-        if (bottomBarUi) setTheme(R.style.AppTheme_SpecialUI);
-
-        this.savedInstanceState = savedInstanceState;
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.showcase_activity);
-        ButterKnife.bind(this);
+        ShowcaseActivityBinding binding =
+                DataBindingUtil.setContentView(this, R.layout.showcase_activity);
 
-        prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        noNetwork = binding.noNetwork;
+        toolbar = binding.toolbar;
+        masterView = binding.rootView;
+        navigationView = binding.navigationView;
+        drawerLayout = binding.drawerLayout;
 
-        Substratum.setLocale(prefs.getBoolean("force_english", false));
+        toolbar.setOnClickListener(v -> {
+            if (ShowcaseTab.recyclerView != null)
+                ShowcaseTab.recyclerView.smoothScrollToPosition(0);
+        });
 
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -193,38 +171,12 @@ public class ShowcaseActivity extends AppCompatActivity {
             getSupportActionBar().setHomeButtonEnabled(false);
             getSupportActionBar().setTitle(R.string.showcase);
         }
-        toolbar.setNavigationOnClickListener((view) -> {
-            if (drawer.isDrawerOpen()) {
-                drawer.closeDrawer();
-            } else {
-                finish();
-            }
-        });
-
-        if (bottomBarUi) {
-            // Change the toolbar title size
-            for (int i = 0; i < toolbar.getChildCount(); i++) {
-                View child = toolbar.getChildAt(i);
-                if (child instanceof TextView) {
-                    TextView textView = ((TextView) child);
-                    textView.setTextSize(22);
-                    break;
-                }
-            }
-        }
-
-        if (Systems.isAndromedaDevice(getApplicationContext())) {
-            andromedaReceiver = new ShowcaseActivity.AndromedaReceiver();
-            localBroadcastManager = LocalBroadcastManager.getInstance(this
-                    .getApplicationContext());
-            localBroadcastManager.registerReceiver(andromedaReceiver,
-                    new IntentFilter(ANDROMEDA_RECEIVER));
-        }
+        toolbar.setNavigationOnClickListener((view) -> onBackPressed());
 
         File showcase_directory =
                 new File(getApplicationContext().getCacheDir() + SHOWCASE_CACHE);
         if (!showcase_directory.exists()) {
-            Boolean made = showcase_directory.mkdir();
+            boolean made = showcase_directory.mkdir();
             if (!made)
                 Log.e(TAG, "Could not make showcase directory...");
         }
@@ -267,22 +219,22 @@ public class ShowcaseActivity extends AppCompatActivity {
                 String resultant = result;
                 if (resultant.endsWith("-temp.xml")) {
                     String existing = MD5.calculateMD5(new File(activity.getCacheDir() +
-                            SHOWCASE_CACHE + "showcase_tabs.xml"));
+                            SHOWCASE_CACHE + showcaseTabsFile));
                     String new_file = MD5.calculateMD5(new File(activity.getCacheDir() +
-                            SHOWCASE_CACHE + "showcase_tabs-temp.xml"));
+                            SHOWCASE_CACHE + showcaseTabsTempFile));
                     if ((existing != null) && !existing.equals(new_file)) {
                         // MD5s don't match
                         File renameMe = new File(activity.getCacheDir() +
-                                SHOWCASE_CACHE + "showcase_tabs-temp.xml");
+                                SHOWCASE_CACHE + showcaseTabsTempFile);
                         boolean move = renameMe.renameTo(
                                 new File(activity.getCacheDir() +
-                                        SHOWCASE_CACHE + "showcase_tabs.xml"));
+                                        SHOWCASE_CACHE + showcaseTabsFile));
                         if (move) {
                             Log.e(TAG, "Successfully updated the showcase tabs database.");
                         }
                     } else {
                         File deleteMe = new File(activity.getCacheDir() +
-                                SHOWCASE_CACHE + "showcase_tabs-temp.xml");
+                                SHOWCASE_CACHE + showcaseTabsTempFile);
                         boolean deleted = deleteMe.delete();
                         if (!deleted) {
                             Log.e(TAG, "Unable to delete temporary tab file.");
@@ -290,37 +242,38 @@ public class ShowcaseActivity extends AppCompatActivity {
                     }
                 }
 
-                resultant = "showcase_tabs.xml";
+                resultant = showcaseTabsFile;
 
                 Map<String, String> newArray =
                         ReadShowcaseTabsFile.read(activity.getCacheDir() +
                                 SHOWCASE_CACHE + resultant);
 
-                DrawerBuilder drawerBuilder = new DrawerBuilder();
-                drawerBuilder.withActivity(activity);
-                drawerBuilder.withRootView(R.id.rootView);
-                drawerBuilder.withDisplayBelowStatusBar(false);
-                drawerBuilder.withTranslucentStatusBar(false);
-                drawerBuilder.withDrawerWidthDp(200);
-                drawerBuilder.withDrawerLayout(R.layout.material_drawer_fits_not);
-                drawerBuilder.withSavedInstance(activity.savedInstanceState);
                 List<String> listOfTitles = new ArrayList<>();
                 List<String> listOfLinks = new ArrayList<>(newArray.values());
+                Menu menu = activity.navigationView.getMenu();
+                int i = 0; // Beautifully count for menus unique id
                 for (String tabName : newArray.keySet()) {
-                    drawerBuilder.addDrawerItems(
-                            new PrimaryDrawerItem().withName(tabName));
                     listOfTitles.add(tabName);
+                    menu.add(Menu.NONE, i, Menu.NONE, tabName);
+                    i++;
                 }
-                drawerBuilder.withOnDrawerItemClickListener((view, position, drawerItem) -> {
+
+                activity.navigationView.setNavigationItemSelectedListener(item -> {
+                    int position = item.getItemId();
                     switchFragment(
                             activity,
                             position,
                             listOfLinks.get(position),
                             listOfTitles.get(position));
+                    item.setCheckable(true);
+                    activity.navigationView.setCheckedItem(position);
+                    activity.drawerLayout.closeDrawer(activity.navigationView);
                     return false;
                 });
-                drawerBuilder.withDrawerGravity(Gravity.END);
-                activity.drawer = drawerBuilder.build();
+
+                // Update menus
+                activity.navigationView.invalidate();
+
                 switchFragment(
                         activity,
                         0,
@@ -328,8 +281,13 @@ public class ShowcaseActivity extends AppCompatActivity {
                         listOfTitles.get(0)
                 );
 
-                Handler handler = new Handler();
-                handler.postDelayed(() -> activity.drawer.openDrawer(), 500);
+                new Handler().postDelayed(() -> {
+                    activity.drawerLayout.openDrawer(activity.navigationView);
+                    activity.navigationView.getMenu()
+                            .getItem(0)
+                            .setCheckable(true)
+                            .setChecked(true);
+                }, 500);
             }
         }
 
@@ -338,7 +296,6 @@ public class ShowcaseActivity extends AppCompatActivity {
                                     String link_address,
                                     String title) {
             FragmentTransaction tx = activity.getSupportFragmentManager().beginTransaction();
-            tx.setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out);
             Bundle bundle = new Bundle();
             bundle.putInt("tab_count", position);
             bundle.putString("tabbed_address", link_address);
@@ -357,9 +314,9 @@ public class ShowcaseActivity extends AppCompatActivity {
 
             if (activity != null) {
 
-                File current_wallpapers = new File(
+                File currentWallpapers = new File(
                         activity.getCacheDir() + SHOWCASE_CACHE + inputFileName);
-                if (current_wallpapers.exists()) {
+                if (currentWallpapers.exists()) {
                     // We create a temporary file to check whether we should be replacing the
                     // current
                     inputFileName = inputFileName.substring(0, inputFileName.length() - 4) +
@@ -371,17 +328,6 @@ public class ShowcaseActivity extends AppCompatActivity {
             } else {
                 return null;
             }
-        }
-    }
-
-    /**
-     * Receiver to pick up when Andromeda is no longer connected
-     */
-    class AndromedaReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            finish();
         }
     }
 }

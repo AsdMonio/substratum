@@ -21,6 +21,7 @@ package projekt.substratum.common.platform;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.om.OM;
 import android.content.om.OverlayInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -29,6 +30,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Process;
 import android.preference.PreferenceManager;
 import android.support.annotation.RestrictTo;
 import android.util.Log;
@@ -45,13 +47,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import projekt.substratum.MainActivity;
 import projekt.substratum.R;
 import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Resources;
 import projekt.substratum.common.Systems;
 import projekt.substratum.common.commands.ElevatedCommands;
-import projekt.substratum.util.helpers.MD5;
 import projekt.substratum.util.helpers.Root;
 
 import static android.os.Build.VERSION.SDK_INT;
@@ -61,7 +63,6 @@ import static projekt.substratum.common.Packages.getOverlayTarget;
 import static projekt.substratum.common.Packages.isPackageInstalled;
 import static projekt.substratum.common.References.INTERFACER_PACKAGE;
 import static projekt.substratum.common.References.LEGACY_NEXUS_DIR;
-import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_ROOTED;
 import static projekt.substratum.common.Resources.FRAMEWORK;
 import static projekt.substratum.common.Resources.PIXEL_OVERLAY_PACKAGES;
 import static projekt.substratum.common.Resources.SETTINGS;
@@ -75,7 +76,6 @@ import static projekt.substratum.common.Systems.checkAndromeda;
 import static projekt.substratum.common.Systems.checkOMS;
 import static projekt.substratum.common.Systems.checkSubstratumService;
 import static projekt.substratum.common.Systems.checkThemeInterfacer;
-import static projekt.substratum.common.Systems.checkThemeSystemModule;
 
 public enum ThemeManager {
     ;
@@ -169,7 +169,7 @@ public enum ThemeManager {
             SubstratumService.switchOverlay(overlays, true, shouldRestartUI(context, overlays));
         } else if (hasThemeInterfacer) {
             ThemeInterfacerService.enableOverlays(
-                    context, overlays, shouldRestartUI(context, overlays));
+                    overlays, shouldRestartUI(context, overlays));
         } else if (hasAndromeda) {
             if (!AndromedaService.enableOverlays(overlays)) {
                 Handler handler = new Handler(Looper.getMainLooper());
@@ -189,11 +189,7 @@ public enum ThemeManager {
             try {
                 Thread.sleep(NI_restartSystemUIDelay);
                 if (shouldRestartUI(context, overlays)) {
-                    if (optInFromUIRestart(context)) {
-                        restartSystemUI(context);
-                    } else {
-                        killSystemUINotificationsOnStockOreo(context);
-                    }
+                    restartSystemUI(context);
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -218,7 +214,7 @@ public enum ThemeManager {
             SubstratumService.switchOverlay(overlays, false, shouldRestartUI(context, overlays));
         } else if (checkThemeInterfacer(context)) {
             ThemeInterfacerService.disableOverlays(
-                    context, overlays, shouldRestartUI(context, overlays));
+                    overlays, shouldRestartUI(context, overlays));
         } else if (checkAndromeda(context)) {
             if (!AndromedaService.disableOverlays(overlays)) {
                 Handler handler = new Handler(Looper.getMainLooper());
@@ -239,11 +235,7 @@ public enum ThemeManager {
             try {
                 Thread.sleep(NI_restartSystemUIDelay);
                 if (shouldRestartUI(context, overlays)) {
-                    if (optInFromUIRestart(context)) {
-                        restartSystemUI(context);
-                    } else {
-                        killSystemUINotificationsOnStockOreo(context);
-                    }
+                    restartSystemUI(context);
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -262,7 +254,7 @@ public enum ThemeManager {
             SubstratumService.setPriority(overlays, shouldRestartUI(context, overlays));
         } else if (checkThemeInterfacer(context)) {
             ThemeInterfacerService.setPriority(
-                    context, overlays, shouldRestartUI(context, overlays));
+                    overlays, shouldRestartUI(context, overlays));
         } else if (checkAndromeda(context)) {
             if (!AndromedaService.setPriority(overlays)) {
                 Handler handler = new Handler(Looper.getMainLooper());
@@ -283,11 +275,7 @@ public enum ThemeManager {
             }
             ElevatedCommands.runThreadedCommand(commands.toString());
             if (shouldRestartUI(context, overlays)) {
-                if (optInFromUIRestart(context)) {
-                    restartSystemUI(context);
-                } else {
-                    killSystemUINotificationsOnStockOreo(context);
-                }
+                restartSystemUI(context);
             }
         }
     }
@@ -315,23 +303,9 @@ public enum ThemeManager {
         if (checkSubstratumService(context)) {
             SubstratumService.restartSystemUi();
         } else if (checkThemeInterfacer(context)) {
-            ThemeInterfacerService.restartSystemUI(context);
+            ThemeInterfacerService.restartSystemUI();
         } else {
             Root.runCommand("pkill -f com.android.systemui");
-        }
-    }
-
-    /**
-     * Kill all notifications on stock Oreo with root, unfortunately this doesn't work on persistent
-     * application's notifications such as USB Charging, so unplugging would refresh it.
-     * <p>
-     * This is only used if you don't want to restart SystemUI and have a more graceful ending
-     *
-     * @param context Context
-     */
-    private static void killSystemUINotificationsOnStockOreo(Context context) {
-        if (checkThemeSystemModule(context) == OVERLAY_MANAGER_SERVICE_O_ROOTED) {
-            Root.runCommand("service call notification 1");
         }
     }
 
@@ -392,12 +366,16 @@ public enum ThemeManager {
             }
             // Now let's assume everything that gets through will now be only in OMS ROMs
             Map<String, List<OverlayInfo>> allOverlays = null;
-            if (checkSubstratumService(context)) {
+            if (substratumService) {
                 // For direct calls with the Substratum service
                 allOverlays = SubstratumService.getAllOverlays();
-            } else if (checkThemeInterfacer(context)) {
-                // For Theme Interfacer calls
-                allOverlays = ThemeInterfacerService.getAllOverlays(context);
+            } else if (themeInterfacer) {
+                // The ol' way
+                try {
+                    allOverlays = OM.get().getAllOverlays(Process.myUid() / 100000);
+                } catch (Exception e) {
+                    // Ummmmmmmmmm
+                }
             }
             if (allOverlays != null) {
                 switch (secondaryState) {
@@ -449,7 +427,8 @@ public enum ThemeManager {
             }
         } catch (Exception e) {
             // At this point, we probably ran into a legacy command or stock OMS
-            if (Systems.checkOMS(context) || Systems.checkOreo()) {
+            if ((Systems.checkOMS(context) || Systems.checkOreo()) &&
+                    !MainActivity.instanceBasedAndromedaFailure) {
                 String prefix;
                 if (overlayState == STATE_ENABLED) {
                     prefix = "[x]";
@@ -462,35 +441,25 @@ public enum ThemeManager {
                 String[] arrList = null;
 
                 // This is a check for Oreo and Andromeda's integration
-                if (Systems.checkAndromeda(context)) {
+                if (Systems.checkAndromeda(context) && !MainActivity.instanceBasedAndromedaFailure) {
                     File overlays = new File(
                             Environment.getExternalStorageDirectory().getAbsolutePath() +
                                     "/.andromeda/overlays.xml");
 
                     // Call Andromeda to output the file!
-                    SharedPreferences prefs =
-                            PreferenceManager.getDefaultSharedPreferences(context);
-                    if (!overlays.exists()) {
-                        Log.d("ThemeManager", "Fetching new file from Andromeda, please wait!");
-                        AndromedaService.listOverlays();
-                        int counter = 0;
-                        while (!overlays.exists() && (counter <= 20)) {
-                            try {
-                                Thread.sleep(100L);
-                                counter++;
-                                Log.d("ThemeManager",
-                                        "Substratum is still waiting for a response " +
-                                                "from Andromeda...");
-                            } catch (InterruptedException e1) {
-                                e1.printStackTrace();
-                            }
+                    Log.d("ThemeManager", "Fetching new file from Andromeda, please wait!");
+                    AndromedaService.listOverlays();
+                    int counter = 0;
+                    while (!overlays.exists() && (counter <= 200)) {
+                        try {
+                            Thread.sleep(10L);
+                            counter++;
+                            Log.d("ThemeManager",
+                                    "Substratum is still waiting for a response " +
+                                            "from Andromeda...");
+                        } catch (InterruptedException e1) {
+                            e1.printStackTrace();
                         }
-                        if (overlays.exists()) {
-                            prefs.edit().putString("andromeda_overlays",
-                                    MD5.calculateMD5(overlays)).apply();
-                        }
-                    } else {
-                        Log.d("ThemeManager", "Queuing list using cached file!");
                     }
 
                     // Andromeda's file is done!
@@ -559,8 +528,7 @@ public enum ThemeManager {
                                         if (!sourceDir.startsWith("/vendor/overlay/")) {
                                             list.add(packageName);
                                         }
-                                    } catch (Exception e2) {
-                                        // Suppress warning
+                                    } catch (Exception ignored) {
                                     }
                                 }
                             }
@@ -568,9 +536,11 @@ public enum ThemeManager {
                         break;
                 }
             } else {
-                // We now know this is not OMS, so fallback for Samsung and Legacy
+                // We now know this is not OMS, so fallback for Samsung and Legacy or
+                // offline Andromeda
                 if ((overlayState == STATE_LIST_ALL_OVERLAYS) || (overlayState == STATE_ENABLED)) {
-                    if (Systems.isSamsungDevice(context)) {
+                    if (Systems.isSamsungDevice(context) ||
+                            MainActivity.instanceBasedAndromedaFailure) {
                         PackageManager pm = context.getPackageManager();
                         List<ApplicationInfo> packages =
                                 pm.getInstalledApplications(PackageManager.GET_META_DATA);
@@ -600,21 +570,22 @@ public enum ThemeManager {
                 }
             }
         }
+        list.removeAll(Arrays.asList(PIXEL_OVERLAY_PACKAGES));
         return list;
     }
 
     /**
      * Check whether a specified package is an overlay
      *
-     * @param context      Context
-     * @param package_name Package to be determined
-     * @return True, if package_name is an overlay
+     * @param context     Context
+     * @param packageName Package to be determined
+     * @return True, if packageName is an overlay
      */
     public static boolean isOverlay(Context context,
-                                    String package_name) {
+                                    String packageName) {
         List<String> overlays = listAllOverlays(context);
         for (int i = 0; i < overlays.size(); i++) {
-            if (overlays.get(i).equals(package_name)) {
+            if (overlays.get(i).equals(packageName)) {
                 return true;
             }
         }
@@ -624,16 +595,16 @@ public enum ThemeManager {
     /**
      * List overlays by theme
      *
-     * @param context      Context
-     * @param package_name Package to be determined
-     * @return Returns a list of overlays activated for package_name
+     * @param context     Context
+     * @param packageName Package to be determined
+     * @return Returns a list of overlays activated for packageName
      */
     public static List<String> listOverlaysByTheme(Context context,
-                                                   String package_name) {
+                                                   String packageName) {
         List<String> list = new ArrayList<>();
         List<String> overlays = listAllOverlays(context);
         for (int i = 0; i < overlays.size(); i++) {
-            if (getOverlayParent(context, overlays.get(i)).equals(package_name)) {
+            if (getOverlayParent(context, overlays.get(i)).equals(packageName)) {
                 list.add(overlays.get(i));
             }
         }
@@ -716,7 +687,7 @@ public enum ThemeManager {
         } else if (checkThemeInterfacer(context)) {
             ArrayList<String> list = new ArrayList<>();
             list.add(overlay);
-            ThemeInterfacerService.installOverlays(context, list);
+            ThemeInterfacerService.installOverlays(list);
         } else if (checkAndromeda(context)) {
             List<String> list = new ArrayList<>();
             list.add(overlay);
@@ -756,10 +727,11 @@ public enum ThemeManager {
             SubstratumService.uninstallOverlay(overlays, shouldRestartUi);
         } else if (checkThemeInterfacer(context) && !Systems.isSamsungDevice(context)) {
             ThemeInterfacerService.uninstallOverlays(
-                    context,
-                    overlays,
-                    false);
-        } else if (checkAndromeda(context) && !Systems.isSamsungDevice(context)) {
+                    overlays
+            );
+        } else if ((checkAndromeda(context) &&
+                !MainActivity.instanceBasedAndromedaFailure) &&
+                !Systems.isSamsungDevice(context)) {
             if (!AndromedaService.uninstallOverlays(overlays)) {
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.post(() ->
@@ -769,9 +741,10 @@ public enum ThemeManager {
                                 Toast.LENGTH_LONG).show()
                 );
             }
-        } else if (Systems.isSamsungDevice(context) &&
-                !Root.checkRootAccess() &&
-                !Root.requestRootAccess()) {
+        } else if (MainActivity.instanceBasedAndromedaFailure ||
+                (Systems.isSamsungDevice(context) &&
+                        !Root.checkRootAccess() &&
+                        !Root.requestRootAccess())) {
             for (int i = 0; i < overlays.size(); i++) {
                 Uri packageURI = Uri.parse("package:" + overlays.get(i));
                 Intent uninstallIntent = new Intent(Intent.ACTION_DELETE, packageURI);
@@ -796,6 +769,7 @@ public enum ThemeManager {
      * @return True, if should restart SystemUI
      */
     public static boolean shouldRestartUI(Context context, String overlay) {
+        if (checkSubstratumService(context)) return false;
         if (overlay.startsWith(SYSTEMUI)) {
             return checkOMS(context);
         }
@@ -811,23 +785,12 @@ public enum ThemeManager {
      */
     public static boolean shouldRestartUI(Context context,
                                           Iterable<String> overlays) {
+        if (checkSubstratumService(context)) return false;
         for (String o : overlays) {
             if (shouldRestartUI(context, o)) {
                 return true;
             }
         }
         return false;
-    }
-
-    /**
-     * Allow the user to control whether they would get SystemUI restarts of not
-     *
-     * @param context Context
-     * @return True, if users want to restart SystemUI
-     */
-    private static boolean optInFromUIRestart(Context context) {
-        return PreferenceManager
-                .getDefaultSharedPreferences(context)
-                .getBoolean("opt_in_sysui_restart", true);
     }
 }

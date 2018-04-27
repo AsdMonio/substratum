@@ -52,6 +52,7 @@ public enum Resources {
     public static final String[] ALLOWED_SETTINGS_ELEMENTS = {
             SETTINGS_ICONS,
     };
+
     // Default core packages
     @SuppressWarnings("unused")
     public static final String[] CORE_SYSTEM_PACKAGES = {
@@ -82,6 +83,7 @@ public enum Resources {
 
             // Device Specific Packages
             "com.cyanogenmod.settings.device",
+            "org.lineageos.settings.device",
 
             // Google Packages
             "com.google.android.apps.nexuslauncher",
@@ -95,18 +97,21 @@ public enum Resources {
             // Organization Packages
             "projekt.substratum",
     };
+
     public static final String[] SYSTEM_FAULT_EXCEPTIONS = {
             "null object reference",
             "null object",
             "not attached to Activity",
             "not attached"
     };
+
     // List of errors to catch
     public static final String[] SUBSTRATUM_OVERLAY_FAULT_EXCEPTIONS = {
             "ResourceNotFoundException",
             "InflateException",
             "UnsupportedOperationException"
     };
+
     public static final String[] ALLOWED_SOUNDS = {
             "alarm.mp3",
             "alarm.ogg",
@@ -121,17 +126,28 @@ public enum Resources {
             "Unlock.mp3",
             "Unlock.ogg",
     };
+
     // List of stock overlay packages on Pixel devices
     // We don't want to run any operations on them.
     public static final String[] PIXEL_OVERLAY_PACKAGES = {
+            "android.auto_generated_rro__",
             "com.google.android.theme.pixel",
             "com.android.systemui.theme.dark",
     };
+
+    // These packages will be exempt from having the Samsung overlay permission added onto it
+    private static final String[] SAMSUNG_PERMISSION_BLACKLIST_PACKAGES = {
+            "com.sec.android.app.music",
+            "com.sec.android.app.voicenote",
+            "com.wssyncmldm"
+    };
+
     // Filter to adjust framework elements
     private static final String[] ALLOWED_FRAMEWORK_ELEMENTS = {
             SAMSUNG_FRAMEWORK,
             LG_FRAMEWORK
     };
+
     // Filter to adjust SystemUI elements
     private static final String[] ALLOWED_SYSTEMUI_ELEMENTS = {
             SYSTEMUI_HEADERS,
@@ -140,6 +156,7 @@ public enum Resources {
             SYSTEMUI_QSTILES,
             SYSTEMUI_STATUSBARS
     };
+
     // Predetermined list of new Nexus/Pixel Devices
     private static final String[] NEXUS_FILTER = {
             "angler", // Nexus 6P
@@ -152,11 +169,13 @@ public enum Resources {
             "muskie", // The hidden HTC Pixel 2
             "taimen", // Pixel 2 XL
     };
+
     // Legacy Asset Folder Check
     private static final String[] ALLOWED_LEGACY_ASSETS = {
             "overlays",
             "bootanimation",
     };
+
     // Do not theme these packages
     private static final String[] BLACKLIST_THEME_TARGET_APPS = {
             "com.android.cts.verifier",
@@ -196,6 +215,11 @@ public enum Resources {
     // This string array contains all blacklisted app for theme
     public static Boolean allowedAppOverlay(final String targetValue) {
         return !Arrays.asList(BLACKLIST_THEME_TARGET_APPS).contains(targetValue);
+    }
+
+    // This string array checks whether the listing package contains a blacklisted Samsung package
+    public static Boolean allowedForSamsungPermission(final String targetValue) {
+        return !Arrays.asList(SAMSUNG_PERMISSION_BLACKLIST_PACKAGES).contains(targetValue);
     }
 
     // This method checks whether custom fonts is supported by the system
@@ -244,13 +268,8 @@ public enum Resources {
             cls.getDeclaredMethod("stopShutdownAnimation");
             Log.d(SUBSTRATUM_LOG, "This system fully supports theme shutdown animation.");
             return true;
-        } catch (final Exception ignored) {
-            return false;
+        } catch (Exception ignored) {
         }
-    }
-
-    // This method checks whether user profiles is supported by the system
-    public static boolean isProfilesSupported(final Context context) {
-        return !checkAndromeda(context) && !isSamsungDevice(context);
+        return false;
     }
 }

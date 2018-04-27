@@ -18,9 +18,11 @@
 
 package projekt.substratum.common;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ComponentName;
@@ -32,8 +34,13 @@ import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.content.pm.Signature;
 import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Typeface;
 import android.graphics.drawable.AdaptiveIconDrawable;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.net.ConnectivityManager;
@@ -45,8 +52,18 @@ import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.ScrollView;
+import android.widget.Spinner;
+import android.widget.SpinnerAdapter;
+import android.widget.TableLayout;
+import android.widget.TableRow;
+import android.widget.TextView;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -61,11 +78,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -73,10 +92,12 @@ import projekt.substratum.InformationActivity;
 import projekt.substratum.LauncherActivity;
 import projekt.substratum.MainActivity;
 import projekt.substratum.R;
+import projekt.substratum.Substratum;
 import projekt.substratum.activities.shortcuts.AppShortcutLaunch;
 import projekt.substratum.common.analytics.FirebaseAnalytics;
 import projekt.substratum.services.profiles.ScheduledProfileReceiver;
 import projekt.substratum.util.helpers.BinaryInstaller;
+import projekt.substratum.util.helpers.TranslatorParser;
 
 import static android.content.Context.CLIPBOARD_SERVICE;
 import static projekt.substratum.common.Internal.BYTE_ACCESS_RATE;
@@ -85,15 +106,16 @@ import static projekt.substratum.common.Systems.checkPackageRegex;
 public enum References {
     ;
 
-    public static final Boolean ENABLE_ROOT_CHECK = true; // Force the app to run without root
-    public static final Boolean ENABLE_EXTRAS_DIALOG = false; // Show a dialog when applying extras
-    public static final Boolean ENABLE_AAPT_OUTPUT = false; // WARNING, DEVELOPERS - BREAKS COMPILE
-    public static final Boolean ENABLE_PACKAGE_LOGGING = false; // Show time/date/place of install
-    public static final Boolean ENABLE_DIRECT_ASSETS_LOGGING = true; // Self explanatory
-    public static final Boolean BYPASS_ALL_VERSION_CHECKS = false; // For developer previews only!
-    public static final Boolean BYPASS_SUBSTRATUM_BUILDER_DELETION = false; // Do not delete cache?
+    public static final boolean ENABLE_ROOT_CHECK = true; // Force the app to run without root
+    public static final boolean ENABLE_EXTRAS_DIALOG = false; // Show a dialog when applying extras
+    public static final boolean ENABLE_AAPT_OUTPUT = false; // WARNING, DEVELOPERS - BREAKS COMPILE
+    public static final boolean ENABLE_PACKAGE_LOGGING = false; // Show time/date/place of install
+    public static final boolean ENABLE_DIRECT_ASSETS_LOGGING = true; // Self explanatory
+    public static final boolean BYPASS_SYSTEM_VERSION_CHECK = false; // For developer previews only!
+    public static final boolean BYPASS_SUBSTRATUM_BUILDER_DELETION = false; // Do not delete cache?
     @SuppressWarnings("WeakerAccess")
     public static final Integer OVERLAY_UPDATE_RANGE = 815; // Overlays require updating since ver
+    public static final String SECURITY_UPDATE_WARN_AFTER = "2018-02-01";
     // These are specific log tags for different classes
     public static final String SUBSTRATUM_BUILDER = "SubstratumBuilder";
     public static final String SUBSTRATUM_LOG = "SubstratumLogger";
@@ -101,8 +123,8 @@ public enum References {
     // These are package names for our backend systems
     public static final String ANDROMEDA_PACKAGE = "projekt.andromeda";
     public static final String INTERFACER_PACKAGE = "projekt.interfacer";
-    public static final String INTERFACER_SERVICE = INTERFACER_PACKAGE + ".services.JobService";
     public static final String SUBSTRATUM_PACKAGE = "projekt.substratum";
+    public static final String COMMON_PACKAGE = "com.mon";
     // Samsung package names
     public static final String SST_ADDON_PACKAGE = "projekt.sungstratum";
     public static final String PLAY_STORE_PACKAGE_NAME = "com.android.vending";
@@ -144,21 +166,28 @@ public enum References {
     public static final String metadataOverlayType2 = "Substratum_Type2";
     public static final String metadataOverlayType3 = "Substratum_Type3";
     public static final String metadataOverlayType4 = "Substratum_Type4";
+    public static final String[] metadataOverlayTypes = new String[]{
+            References.metadataOverlayType1a,
+            References.metadataOverlayType1b,
+            References.metadataOverlayType1c,
+            References.metadataOverlayType2,
+            References.metadataOverlayType3,
+            References.metadataOverlayType4
+    };
     public static final String metadataOverlayVersion = "Substratum_Version";
     public static final String metadataSamsungSupport = "Substratum_Samsung";
-    public static final String metadataThemeReady = "Substratum_ThemeReady";
     public static final String resourceChangelog = "ThemeChangelog";
-    // These are Samsung specific manifest values
-    public static final Boolean toggleShowSamsungOverlayInSettings = false;
-    public static final String permissionSamsungOverlay =
-            "com.samsung.android.permission.SAMSUNG_OVERLAY_COMPONENT";
-    // These strings control the nav drawer filter for ThemeFragment
-    public static final String homeFragment = "";
+    // These strings control the folders to detect in the assets
+    public static final String overlaysFolder = "overlays";
+    public static final String bootAnimationsFolder = "bootanimation";
+    public static final String shutdownAnimationsFolder = "shutdownanimation";
+    public static final String fontsFolder = "fonts";
+    public static final String soundsFolder = "audio";
+    // These strings control the fragments to be loaded by the app
     public static final String overlaysFragment = "overlays";
-    public static final String bootAnimationsFragment = "bootanimation";
-    public static final String shutdownAnimationsFragment = "shutdownanimation";
+    public static final String bootAnimationsFragment = "bootanimations";
     public static final String fontsFragment = "fonts";
-    public static final String soundsFragment = "audio";
+    public static final String soundsFragment = "sounds";
     public static final String wallpaperFragment = "wallpapers";
     // These strings control the showcase metadata parsing
     public static final String paidTheme = "paid";
@@ -187,13 +216,18 @@ public enum References {
     public static final int SAMSUNG_THEME_ENGINE_N = 2389284;
     public static final int NO_THEME_ENGINE = 0;
     // This int controls the notification identifier
-    public static final int notification_id_compiler = 17589715;
+    public static final int NOTIFICATION_ID_COMPILER = 17589715;
     // This int controls the delay for window refreshes to occur
     public static final int REFRESH_WINDOW_DELAY = 500;
     // This int controls the default grid count for the theme adapter
     public static final int MIN_GRID_COUNT = 1;
     public static final int DEFAULT_GRID_COUNT = 1;
     public static final int MAX_GRID_COUNT = 4;
+    // This String controls the default theme setting
+    public static final String APP_THEME = "app_theme";
+    public static final String DEFAULT_THEME = "light";
+    public static final String AUTO_THEME = "auto";
+    public static final String DARK_THEME = "dark";
     // This int controls the default priority level for legacy overlays
     public static final int DEFAULT_PRIORITY = 1004;
     public static final int MIN_PRIORITY = 1;
@@ -205,9 +239,12 @@ public enum References {
     // Metadata used in theme templates to denote specific parts of a theme
     public static final String metadataVersion = "Substratum_Plugin";
     // Validate with logs
-    public static final Boolean VALIDATE_WITH_LOGS = false;
+    public static final boolean VALIDATE_WITH_LOGS = false;
     // Control the animation duration
     public static final int FADE_FROM_GRAYSCALE_TO_COLOR_DURATION = 1250;
+    // Special permission for Samsung devices
+    public static final String SAMSUNG_OVERLAY_PERMISSION =
+            "com.samsung.android.permission.SAMSUNG_OVERLAY_COMPONENT";
     // This string controls the hero image name
     static final String heroImageResourceName = "heroimage";
     static final String heroImageGridResourceName = "heroimage_grid";
@@ -217,40 +254,127 @@ public enum References {
     // Localized variables shared amongst common resources
     static ScheduledProfileReceiver scheduledProfileReceiver;
     // These values control the dynamic certification of substratum
+    // We use java.lang.Boolean here rather than a normal boolean
+    // since it being an Object allows us to have a third state - null,
+    // which means that the variable has not been initialised, where
+    // boolean simply takes on the value false.
     private static Boolean uncertified;
     private static int hashValue;
 
     /**
+     * Unified method to set theme extra lists
+     *
+     * @param context                Context
+     * @param themePid               Package name
+     * @param listDir                Folder to check
+     * @param defaultSpinnerText     0th index of the spinner
+     * @param spinnerSetDefaultsText 1st index of the spinner
+     * @param encryptionLevel        Encrypted or not
+     * @param activity               Activity
+     * @param spinner                Spinner object
+     * @return Mutated spinner object
+     */
+    public static Spinner setThemeExtraLists(Context context,
+                                             String themePid,
+                                             String listDir,
+                                             String defaultSpinnerText,
+                                             String spinnerSetDefaultsText,
+                                             boolean encryptionLevel,
+                                             Activity activity,
+                                             Spinner spinner) {
+        AssetManager themeAssetManager = getThemeAssetManager(context, themePid);
+        if (themeAssetManager != null) {
+            try {
+                final String[] fileArray = themeAssetManager.list(listDir);
+                final List<String> archivedSounds = new ArrayList<>();
+                Collections.addAll(archivedSounds, fileArray);
+
+                // Creates the list of dropdown items
+                final ArrayList<String> unarchivedExtra = new ArrayList<>();
+                unarchivedExtra.add(defaultSpinnerText);
+                unarchivedExtra.add(spinnerSetDefaultsText);
+                for (int i = 0; i < archivedSounds.size(); i++) {
+                    unarchivedExtra.add(archivedSounds.get(i).substring(0,
+                            archivedSounds.get(i).length() - (encryptionLevel ? 8 : 4)));
+                }
+
+                assert activity != null;
+                final SpinnerAdapter adapter1 = new ArrayAdapter<>(activity,
+                        android.R.layout.simple_spinner_dropdown_item, unarchivedExtra);
+                spinner.setAdapter(adapter1);
+                return spinner;
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the AssetManager of the theme package
+     *
+     * @param context     Context
+     * @param packageName Package name to pull Asset Manager from
+     * @return AssetManager of the specified package name
+     */
+    public static AssetManager getThemeAssetManager(Context context, String packageName) {
+        try {
+            Resources themeResources =
+                    context.getPackageManager().getResourcesForApplication(packageName);
+            return themeResources.getAssets();
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Prettify the recycler view UI with fading desaturating colors!
+     *
+     * @param imageView The view that will be animating
+     */
+    public static void setRecyclerViewAnimations(ImageView imageView) {
+        ColorMatrix matrix = new ColorMatrix();
+        ValueAnimator animation = ValueAnimator.ofFloat(0f, 1f);
+        animation.setDuration(FADE_FROM_GRAYSCALE_TO_COLOR_DURATION);
+        animation.addUpdateListener(animation1 -> {
+            matrix.setSaturation(animation1.getAnimatedFraction());
+            ColorMatrixColorFilter filter = new ColorMatrixColorFilter(matrix);
+            imageView.setColorFilter(filter);
+        });
+        animation.start();
+    }
+
+    /**
      * Create a launcher icon/launchable intent
      *
-     * @param context    Self explanatory, bro.
-     * @param theme_pid  Theme's package name (launcher intent process)
-     * @param theme_name Theme's name (launcher icon name)
+     * @param context   Self explanatory, bro.
+     * @param themePid  Theme's package name (launcher intent process)
+     * @param themeName Theme's name (launcher icon name)
      */
     public static void createLauncherIcon(Context context,
-                                          String theme_pid,
-                                          String theme_name) {
-        createLauncherIcon(context, theme_pid, theme_name, false);
+                                          String themePid,
+                                          String themeName) {
+        createLauncherIcon(context, themePid, themeName, false);
     }
 
     /**
      * Create a launcher icon/launchable intent
      *
      * @param context               Self explanatory, bro.
-     * @param theme_pid             Theme's package name (launcher intent process)
-     * @param theme_name            Theme's name (launcher icon name)
-     * @param launchManagerFragment Boolean flag that creates an intent to launch
+     * @param themePid              Theme's package name (launcher intent process)
+     * @param themeName             Theme's name (launcher icon name)
+     * @param launchManagerFragment boolean flag that creates an intent to launch
      *                              {@link projekt.substratum.fragments.ManagerFragment}
      * @return Returns an intent with the corresponding action
      */
     public static Intent createLauncherIcon(
             Context context,
-            String theme_pid,
-            String theme_name,
+            String themePid,
+            String themeName,
             boolean launchManagerFragment) {
         Intent myIntent = new Intent(Intent.ACTION_MAIN);
         if (!launchManagerFragment) {
-            myIntent.putExtra("theme_pid", theme_pid);
+            myIntent.putExtra(Internal.THEME_PID, themePid);
             myIntent.setComponent(
                     ComponentName.unflattenFromString(
                             context.getPackageName() +
@@ -265,24 +389,24 @@ public enum References {
 
         if (launchManagerFragment) return myIntent;
 
-        Bitmap app_icon = Packages.getBitmapFromDrawable(Packages.getAppIcon(context,
-                theme_pid));
+        Bitmap appIcon = Packages.getBitmapFromDrawable(Packages.getAppIcon(context,
+                themePid));
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             Intent addIntent = new Intent();
             addIntent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, myIntent);
-            addIntent.putExtra(Intent.EXTRA_SHORTCUT_NAME, theme_name);
-            addIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, app_icon);
+            addIntent.putExtra(Intent.EXTRA_SHORTCUT_NAME, themeName);
+            addIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, appIcon);
             addIntent.putExtra("duplicate", false);
             addIntent.setAction("com.android.launcher.action.INSTALL_SHORTCUT");
             context.sendBroadcast(addIntent);
         } else {
             ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
             ShortcutInfo shortcut =
-                    new ShortcutInfo.Builder(context, theme_name)
-                            .setShortLabel(theme_name)
-                            .setLongLabel(theme_name)
-                            .setIcon(Icon.createWithBitmap(app_icon))
+                    new ShortcutInfo.Builder(context, themeName)
+                            .setShortLabel(themeName)
+                            .setLongLabel(themeName)
+                            .setIcon(Icon.createWithBitmap(appIcon))
                             .setIntent(myIntent)
                             .build();
             if (shortcutManager != null) {
@@ -295,29 +419,29 @@ public enum References {
     /**
      * Create a launcher shortcut
      *
-     * @param context    Context
-     * @param theme_pid  Package name
-     * @param theme_name Theme name
+     * @param context   Context
+     * @param themePid  Package name
+     * @param themeName Theme name
      */
     public static void createShortcut(Context context,
-                                      String theme_pid,
-                                      String theme_name) {
+                                      String themePid,
+                                      String themeName) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
             ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
-            Icon app_icon;
-            Drawable app_icon_drawable = Packages.getAppIcon(context, theme_pid);
+            Icon appIcon;
+            Drawable appIconDrawable = Packages.getAppIcon(context, themePid);
             //If we are on Oreo and the Theme uses an adaptiveIcon, we have to treat it properly
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                    app_icon_drawable instanceof AdaptiveIconDrawable) {
-                app_icon = Icon.createWithAdaptiveBitmap(Packages.getBitmapFromDrawable
-                        (app_icon_drawable));
+                    appIconDrawable instanceof AdaptiveIconDrawable) {
+                appIcon = Icon.createWithAdaptiveBitmap(Packages.getBitmapFromDrawable
+                        (appIconDrawable));
             } else {
-                app_icon = Icon.createWithBitmap(Packages.getBitmapFromDrawable(app_icon_drawable));
+                appIcon = Icon.createWithBitmap(Packages.getBitmapFromDrawable(appIconDrawable));
             }
             try {
                 Intent myIntent = new Intent(Intent.ACTION_MAIN);
-                myIntent.putExtra("theme_name", theme_name);
-                myIntent.putExtra("theme_pid", theme_pid);
+                myIntent.putExtra(Internal.THEME_NAME, themeName);
+                myIntent.putExtra(Internal.THEME_PID, themePid);
                 myIntent.setComponent(
                         ComponentName.unflattenFromString(
                                 context.getPackageName() +
@@ -326,9 +450,9 @@ public enum References {
 
                 ShortcutInfo shortcut =
                         new ShortcutInfo.Builder(context, "favorite")
-                                .setShortLabel(theme_name)
-                                .setLongLabel(theme_name)
-                                .setIcon(app_icon)
+                                .setShortLabel(themeName)
+                                .setLongLabel(themeName)
+                                .setIcon(appIcon)
                                 .setIntent(myIntent)
                                 .build();
                 if (shortcutManager != null) {
@@ -362,23 +486,22 @@ public enum References {
      * @return Returns the Xposed version
      */
     public static String checkXposedVersion() {
-        String xposed_version = "";
+        String xposedVersion = "";
         File f = new File("/system/framework/XposedBridge.jar");
         if (f.isFile()) {
             try {
                 File file = new File("/system/", "xposed.prop");
                 BufferedReader br = new BufferedReader(new FileReader(file));
-                String unparsed_br = br.readLine();
-                xposed_version = unparsed_br.substring(8, 10);
+                xposedVersion = br.readLine().substring(8, 10);
             } catch (FileNotFoundException e) {
                 Log.e("XposedChecker", "'xposed.prop' could not be found!");
             } catch (IOException e) {
                 Log.e("XposedChecker", "Unable to parse BufferedReader from 'xposed.prop'");
             }
-            xposed_version = ", " + R.string.logcat_email_xposed_check + " (" +
-                    xposed_version + ')';
+            xposedVersion = ", " + R.string.logcat_email_xposed_check + " (" +
+                    xposedVersion + ')';
         }
-        return xposed_version;
+        return xposedVersion;
     }
 
     /**
@@ -461,14 +584,10 @@ public enum References {
         SharedPreferences.Editor editor2 =
                 context.getSharedPreferences("base_variant", Context.MODE_PRIVATE).edit();
         editor.putBoolean("show_app_icon", true);
-        editor.putBoolean("substratum_oms", Systems.checkOMS(context));
-        editor.putBoolean("show_template_version", false);
+        editor.putBoolean("oms_state", Systems.checkOMS(context));
         editor.putBoolean("vibrate_on_compiled", false);
-        editor.putBoolean("nougat_style_cards", false);
-        editor.putBoolean("alternate_drawer_design", false);
-        editor.putBoolean("aapt_debug", false);
         editor.putBoolean("theme_debug", false);
-        editor.putBoolean("force_english", false);
+        editor.putBoolean("force_english_locale", false);
         editor.putBoolean("floatui_show_android_system_overlays", false);
         editor.putBoolean("alphabetize_overlays", false);
         editor.putBoolean("crash_receiver", true);
@@ -482,13 +601,17 @@ public enum References {
         editor.putBoolean("force_english_locale", false);
         editor.putBoolean("systemui_recreate", true);
         editor.putBoolean("hide_app_checkbox", false);
-        editor.putString("compiler", "aapt");
         editor.putBoolean("auto_disable_target_overlays", false);
+        editor.putBoolean("lite_mode", false);
+        editor.putString(APP_THEME, DEFAULT_THEME);
         editor.putInt("grid_style_cards_count", DEFAULT_GRID_COUNT);
         editor.putInt("legacy_overlay_priority", DEFAULT_PRIORITY);
-        editor.remove("seen_restore_warning");
         editor.remove("previous_logchar_cleanup");
         editor.remove("seen_legacy_warning");
+        editor.remove("rooted_oms_dismissal");
+        editor.remove("new_stock_dismissal");
+        editor.remove("xiaomi_enable_development");
+        editor.remove("legacy_dismissal");
         editor2.clear();
         Theming.refreshInstalledThemesPref(context);
         editor.apply();
@@ -518,19 +641,17 @@ public enum References {
         assert connectivityManager != null;
         NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
         try {
-            InetAddress checkSiteAvailability = InetAddress.getByName("google.com");
-            //noinspection EqualsBetweenInconvertibleTypes
+            String checkSiteAvailability = InetAddress.getByName("google.com").toString();
             return activeNetworkInfo != null &&
                     activeNetworkInfo.isConnected() &&
                     !checkSiteAvailability.equals("");
-        } catch (Exception e) {
-            // Suppress warning
+        } catch (Exception ignored) {
         }
         return false;
     }
 
     /**
-     * Check if a service is funning on the device
+     * Check if a service is running on the device
      *
      * @param serviceClass Specified service to be checked
      * @param context      Context
@@ -544,10 +665,10 @@ public enum References {
         for (ActivityManager.RunningServiceInfo service :
                 manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
-                return false;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     /**
@@ -556,7 +677,6 @@ public enum References {
      * @param input Input text/command
      * @return Returns any outstanding output from the executed command
      */
-    @SuppressWarnings("SameParameterValue")
     public static StringBuilder runShellCommand(String input) {
         try {
             Process shell = Runtime.getRuntime().exec(input);
@@ -569,8 +689,7 @@ public enum References {
                 returnString.append(line).append('\n');
             }
             return returnString;
-        } catch (Exception e) {
-            // Suppress warning
+        } catch (Exception ignored) {
         }
         return null;
     }
@@ -581,7 +700,7 @@ public enum References {
      * @param context Context
      * @return Returns the signature as an int
      */
-    static int hashPassthrough(Context context, Boolean override) {
+    static int hashPassthrough(Context context, boolean override) {
         if (hashValue != 0 && !override) {
             return hashValue;
         }
@@ -609,7 +728,7 @@ public enum References {
      * @param context What's the point of parameters?
      * @return Is it true that there is an afterlife?
      */
-    static Boolean spreadYourWingsAndFly(Context context, Boolean override) {
+    static boolean spreadYourWingsAndFly(Context context, boolean override) {
         if (uncertified != null && !override) {
             return uncertified;
         }
@@ -644,18 +763,12 @@ public enum References {
      * @param minute  Minute
      * @return Returns the proper time
      */
-    @SuppressWarnings("deprecation")
     public static CharSequence parseTime(Context context,
                                          int hour,
                                          int minute) {
-        Locale locale;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            locale = context.getResources().getConfiguration().getLocales().get(0);
-        } else {
-            locale = context.getResources().getConfiguration().locale;
-        }
-
+        Locale locale =
+                context.getResources().getConfiguration().getLocales().get(0);
         String parse;
         if (android.text.format.DateFormat.is24HourFormat(context)) {
             parse = String.format(locale, "%02d:%02d", hour, minute);
@@ -716,6 +829,29 @@ public enum References {
     }
 
     /**
+     * Resizes a given image dynamically based on the user's screen
+     *
+     * @param image Drawable to be resized dynamically
+     * @return Resized drawable
+     */
+    public static Drawable dynamicallyResize(Drawable image) {
+        Bitmap b = ((BitmapDrawable) image).getBitmap();
+
+        int screenWidth = Resources.getSystem().getDisplayMetrics().widthPixels;
+        int gridCount = PreferenceManager.getDefaultSharedPreferences(
+                Substratum.getInstance()).getInt("grid_style_cards_count", 1);
+        float targetWidthSize = (float) screenWidth / gridCount;
+
+        int width = image.getIntrinsicWidth();
+        float dstMultiplier = targetWidthSize / width;
+        int dstWidth = (int) (image.getIntrinsicWidth() * dstMultiplier);
+        int dstHeight = (int) (image.getIntrinsicHeight() * dstMultiplier);
+
+        Bitmap bitmapResized = Bitmap.createScaledBitmap(b, dstWidth, dstHeight, true);
+        return new BitmapDrawable(Substratum.getInstance().getResources(), bitmapResized);
+    }
+
+    /**
      * Grab the master view of the activity
      * <p>
      * ATTENTION: Developers, we should not use the ButterKnife library to address the specific
@@ -740,6 +876,97 @@ public enum References {
             return getView(activity).findViewById(R.id.coordinator_layout);
         }
         return null;
+    }
+
+    public static AlertDialog.Builder invokeTranslatorDialog(Context context,
+                                                             List<TranslatorParser.Translator>
+                                                                     translators) {
+        TableLayout table = new TableLayout(context);
+        table.setPadding(30, 10, 30, 10);
+
+        final int size_of_row_text = 10;
+
+        // Dialog title
+        TableRow columnHeaders = new TableRow(context);
+        TableRow titleRow = new TableRow(context);
+        TextView title = new TextView(context);
+        title.setText(context.getString(R.string.team_title_two));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setPadding(0, 20, 0, 20);
+        titleRow.setGravity(Gravity.CENTER);
+        titleRow.addView(title);
+
+        // Equivalent column sizes params
+        TableRow.LayoutParams equivalentParams = new TableRow.LayoutParams();
+        equivalentParams.width = 0;
+        equivalentParams.weight = (float) 0.33;
+
+        // Titles
+        TextView nameColumn = new TextView(context);
+        nameColumn.setText(context.getString(R.string.translator_name));
+        nameColumn.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        nameColumn.setGravity(Gravity.CENTER_HORIZONTAL);
+        nameColumn.setLayoutParams(equivalentParams);
+
+        TextView languageColumn = new TextView(context);
+        languageColumn.setText(context.getString(R.string.translator_languages));
+        languageColumn.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        languageColumn.setGravity(Gravity.CENTER_HORIZONTAL);
+        languageColumn.setLayoutParams(equivalentParams);
+
+        TextView translatedWordsColumn = new TextView(context);
+        translatedWordsColumn.setText(context.getString(R.string.translator_words));
+        translatedWordsColumn.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        translatedWordsColumn.setGravity(Gravity.CENTER_HORIZONTAL);
+        translatedWordsColumn.setLayoutParams(equivalentParams);
+
+        columnHeaders.addView(nameColumn);
+        columnHeaders.addView(languageColumn);
+        columnHeaders.addView(translatedWordsColumn);
+        columnHeaders.setPadding(0, 10, 0, 30);
+
+        table.addView(titleRow);
+        table.addView(columnHeaders);
+
+        for (int i = 0; i < translators.size(); i++) {
+            TableRow rowLows = new TableRow(context);
+
+            TextView contributor = new TextView(context);
+            contributor.setText(translators.get(i).contributorName);
+            contributor.setTextSize(size_of_row_text);
+            contributor.setTypeface(Typeface.DEFAULT_BOLD);
+            contributor.setGravity(Gravity.CENTER_HORIZONTAL);
+            contributor.setLayoutParams(equivalentParams);
+
+            String langs = translators.get(i).languages.toString();
+            langs = langs.substring(1, langs.length() - 1);
+            TextView languages = new TextView(context);
+            languages.setText(langs);
+            languages.setTextSize(size_of_row_text);
+            languages.setTypeface(Typeface.DEFAULT_BOLD);
+            languages.setGravity(Gravity.CENTER_HORIZONTAL);
+            languages.setLayoutParams(equivalentParams);
+
+            TextView translated = new TextView(context);
+            translated.setText(String.valueOf(translators.get(i).translated_words));
+            translated.setTextSize(size_of_row_text);
+            translated.setTypeface(Typeface.DEFAULT_BOLD);
+            translated.setGravity(Gravity.CENTER_HORIZONTAL);
+            translated.setLayoutParams(equivalentParams);
+
+            rowLows.addView(contributor);
+            rowLows.addView(languages);
+            rowLows.addView(translated);
+            table.addView(rowLows);
+        }
+        ScrollView sv = new ScrollView(context);
+        sv.addView(table);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setView(sv);
+        builder.setPositiveButton(android.R.string.ok, (dialog, which) -> dialog.cancel());
+        return builder;
     }
 
     /**

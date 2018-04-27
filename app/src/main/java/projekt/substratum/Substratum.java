@@ -31,19 +31,18 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.media.AudioAttributes;
 import android.os.Build;
 import android.preference.PreferenceManager;
 import android.support.annotation.RequiresApi;
-import android.util.DisplayMetrics;
+import android.support.v7.app.AppCompatDelegate;
 import android.util.Log;
 
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.crash.FirebaseCrash;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -53,13 +52,22 @@ import projekt.substratum.common.Broadcasts;
 import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Systems;
+import projekt.substratum.common.platform.ThemeManager;
 import projekt.substratum.services.binder.AndromedaBinderService;
 import projekt.substratum.services.binder.InterfacerBinderService;
 
+import static android.support.v7.app.AppCompatDelegate.MODE_NIGHT_AUTO;
+import static android.support.v7.app.AppCompatDelegate.MODE_NIGHT_NO;
+import static android.support.v7.app.AppCompatDelegate.MODE_NIGHT_YES;
 import static projekt.substratum.BuildConfig.DEBUG;
+import static projekt.substratum.common.References.APP_THEME;
+import static projekt.substratum.common.References.AUTO_THEME;
+import static projekt.substratum.common.References.DARK_THEME;
+import static projekt.substratum.common.References.DEFAULT_THEME;
 import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_ANDROMEDA;
 import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_ROOTED;
 import static projekt.substratum.common.References.RUNTIME_RESOURCE_OVERLAY_N_ROOTED;
+import static projekt.substratum.common.Systems.checkOreo;
 import static projekt.substratum.common.Systems.isAndromedaDevice;
 import static projekt.substratum.common.Systems.isBinderInterfacer;
 
@@ -68,10 +76,11 @@ public class Substratum extends Application {
     private static final String BINDER_TAG = "BinderService";
     private static final FinishReceiver finishReceiver = new FinishReceiver();
     public static int initialPackageCount = 0;
+    public static int initialOverlayCount = 0;
     public static Thread currentThread;
     private static Substratum substratum;
     private static boolean isWaiting;
-    private static Boolean shouldStopThread = false;
+    private static boolean shouldStopThread = false;
 
     /**
      * Get the current instance of the substratum application
@@ -112,23 +121,6 @@ public class Substratum extends Application {
     }
 
     /**
-     * Set the locale of the whole app
-     *
-     * @param forceEnglish Force english?
-     */
-    public static void setLocale(boolean forceEnglish) {
-        Resources resources = Substratum.getInstance().getResources();
-        DisplayMetrics displayMetrics = resources.getDisplayMetrics();
-        android.content.res.Configuration conf = resources.getConfiguration();
-        if (forceEnglish) {
-            conf.setLocale(Locale.US);
-        } else {
-            conf.setLocale(Locale.getDefault());
-        }
-        resources.updateConfiguration(conf, displayMetrics);
-    }
-
-    /**
      * Stop the ongoing package detection on Samsung
      */
     public static void stopSamsungPackageMonitor() {
@@ -146,8 +138,10 @@ public class Substratum extends Application {
         Log.d("Substratum",
                 "The overlay package refresher for Samsung devices has been fully loaded.");
         PackageManager pm = context.getPackageManager();
-        List<ApplicationInfo> currentApps = pm.getInstalledApplications(0);
+        List<ApplicationInfo> currentApps =
+                pm.getInstalledApplications(PackageManager.GET_META_DATA);
         initialPackageCount = currentApps.size();
+        if (checkOreo()) initialOverlayCount = ThemeManager.listAllOverlays(context).size();
         Timer timer = new Timer();
         TimerTask timerTask = new TimerTask() {
             @Override
@@ -160,8 +154,16 @@ public class Substratum extends Application {
                     }
                     currentThread = null;
                 }
-                List<ApplicationInfo> currentApps = pm.getInstalledApplications(0);
-                if (initialPackageCount != currentApps.size()) {
+                List<ApplicationInfo> currentApps =
+                        pm.getInstalledApplications(PackageManager.GET_META_DATA);
+                List<String> listOfThemes = new ArrayList<>();
+                if (checkOreo()) listOfThemes = ThemeManager.listAllOverlays(context);
+                if (initialPackageCount != currentApps.size() ||
+                        (checkOreo() &&
+                                initialOverlayCount >= 1 &&
+                                initialOverlayCount != listOfThemes.size())) {
+                    if (checkOreo())
+                        initialOverlayCount = ThemeManager.listAllOverlays(context).size();
                     initialPackageCount = currentApps.size();
                     Broadcasts.sendOverlayRefreshMessage(context);
                 }
@@ -200,32 +202,50 @@ public class Substratum extends Application {
         super.onCreate();
         substratum = this;
 
-        // Set global app theme if on special UI mode
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getInstance());
-        boolean bottomBarUi = !prefs.getBoolean("advanced_ui", false);
-        if (bottomBarUi) {
-            setTheme(R.style.AppTheme_SpecialUI);
+        SharedPreferences prefs =
+                PreferenceManager.getDefaultSharedPreferences(this.getApplicationContext());
+        String selectedTheme = prefs.getString(APP_THEME, DEFAULT_THEME);
+        if (!getApplicationContext().getResources().getBoolean(R.bool.forceAppDarkTheme)) {
+            switch (selectedTheme) {
+                case AUTO_THEME:
+                    AppCompatDelegate.setDefaultNightMode(MODE_NIGHT_AUTO);
+                    break;
+                case DARK_THEME:
+                    AppCompatDelegate.setDefaultNightMode(MODE_NIGHT_YES);
+                    break;
+                case DEFAULT_THEME:
+                    AppCompatDelegate.setDefaultNightMode(MODE_NIGHT_NO);
+                    break;
+            }
         } else {
-            setTheme(R.style.AppTheme);
+            AppCompatDelegate.setDefaultNightMode(MODE_NIGHT_YES);
+            prefs.edit().putString("app_theme", DARK_THEME).apply();
         }
 
         // Firebase
         try {
             FirebaseApp.initializeApp(this.getApplicationContext());
             FirebaseCrash.setCrashCollectionEnabled(!DEBUG);
-        } catch (IllegalStateException ise) {
-            // Suppress warning
+        } catch (IllegalStateException ignored) {
         }
 
         // Dynamically check which theme engine is running at the moment
         if (isAndromedaDevice(this.getApplicationContext())) {
+            boolean startBinderService = this.startBinderService(AndromedaBinderService.class);
             Log.d(BINDER_TAG, "Successful to start the Andromeda binder service: " +
-                    (this.startBinderService(AndromedaBinderService.class) ? "Success!" :
-                            "Failed"));
+                    (startBinderService ? "Success!" : "Failed"));
+            if (!startBinderService) {
+                this.stopService(
+                        new Intent(this.getApplicationContext(), AndromedaBinderService.class));
+            }
         } else if (isBinderInterfacer(this.getApplicationContext())) {
+            boolean startBinderService = this.startBinderService(InterfacerBinderService.class);
             Log.d(BINDER_TAG, "Successful to start the Interfacer binder service: " +
-                    (this.startBinderService(InterfacerBinderService.class) ? "Success!" :
-                            "Failed"));
+                    (startBinderService ? "Success!" : "Failed"));
+            if (!startBinderService) {
+                this.stopService(
+                        new Intent(this.getApplicationContext(), InterfacerBinderService.class));
+            }
         }
 
         // Implicit broadcasts must be declared
@@ -252,7 +272,7 @@ public class Substratum extends Application {
      * For Android Oreo and above, we need to ensure our notification channels are properly
      * configured so that we do not get killed off with the new background service limiter.
      */
-    @RequiresApi(api = Build.VERSION_CODES.O)
+    @RequiresApi(Build.VERSION_CODES.O)
     private void createNotificationChannel() {
         NotificationManager notificationManager =
                 (NotificationManager) this.getSystemService(NOTIFICATION_SERVICE);
@@ -314,8 +334,7 @@ public class Substratum extends Application {
                 }
             }
             return true;
-        } catch (Exception e) {
-            // Suppress warnings
+        } catch (Exception ignored) {
         }
         return false;
     }
@@ -354,7 +373,7 @@ public class Substratum extends Application {
     public void unregisterFinishReceiver() {
         try {
             this.unregisterReceiver(finishReceiver);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException ignored) {
             // Already unregistered
         }
     }

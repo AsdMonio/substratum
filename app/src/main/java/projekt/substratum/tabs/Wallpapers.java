@@ -18,7 +18,9 @@
 
 package projekt.substratum.tabs;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.databinding.DataBindingUtil;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -37,13 +39,12 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
 import projekt.substratum.R;
 import projekt.substratum.adapters.tabs.wallpapers.WallpaperAdapter;
-import projekt.substratum.adapters.tabs.wallpapers.WallpaperEntries;
+import projekt.substratum.adapters.tabs.wallpapers.WallpaperItem;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Systems;
+import projekt.substratum.databinding.TabWallpapersBinding;
 import projekt.substratum.util.helpers.FileDownloader;
 import projekt.substratum.util.readers.ReadCloudWallpaperFile;
 
@@ -53,18 +54,21 @@ import static projekt.substratum.common.Internal.THEME_WALLPAPER;
 public class Wallpapers extends Fragment {
 
     public static AsyncTask<String, Integer, String> mainLoader = null;
-    @BindView(R.id.progress_bar_loader)
-    ProgressBar materialProgressBar;
-    @BindView(R.id.no_network)
-    View no_network;
-    @BindView(R.id.none_found)
-    View no_wallpapers;
-    @BindView(R.id.swipeRefreshLayout)
-    SwipeRefreshLayout swipeRefreshLayout;
-    @BindView(R.id.wallpaperRecyclerView)
-    RecyclerView mRecyclerView;
+    @SuppressLint("StaticFieldLeak")
+    public static RecyclerView recyclerView;
+    private ProgressBar materialProgressBar;
+    private View noNetwork;
+    private View noWallpapers;
+    private SwipeRefreshLayout swipeRefreshLayout;
     private String wallpaperUrl;
     private Context context;
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        recyclerView.invalidate();
+        recyclerView = null;
+    }
 
     @Override
     public View onCreateView(
@@ -72,8 +76,17 @@ public class Wallpapers extends Fragment {
             ViewGroup container,
             Bundle savedInstanceState) {
         context = getContext();
-        View view = inflater.inflate(R.layout.tab_wallpapers, container, false);
-        ButterKnife.bind(this, view);
+
+        TabWallpapersBinding tabWallpapersBinding =
+                DataBindingUtil.inflate(inflater, R.layout.tab_wallpapers, container, false);
+
+        View view = tabWallpapersBinding.getRoot();
+
+        materialProgressBar = tabWallpapersBinding.progressBarLoader;
+        noNetwork = tabWallpapersBinding.noNetwork;
+        noWallpapers = tabWallpapersBinding.noneFound;
+        swipeRefreshLayout = tabWallpapersBinding.swipeRefreshLayout;
+        recyclerView = tabWallpapersBinding.wallpaperRecyclerView;
 
         if (getArguments() != null) {
             wallpaperUrl = getArguments().getString(THEME_WALLPAPER);
@@ -92,19 +105,19 @@ public class Wallpapers extends Fragment {
 
     private void refreshLayout() {
         // Pre-initialize the adapter first so that it won't complain for skipping layout on logs
-        mRecyclerView.setHasFixedSize(true);
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(context));
-        ArrayList<WallpaperEntries> empty_array = new ArrayList<>();
-        RecyclerView.Adapter empty_adapter = new WallpaperAdapter(empty_array);
-        mRecyclerView.setAdapter(empty_adapter);
-        mRecyclerView.getViewTreeObserver().addOnPreDrawListener(
+        recyclerView.setHasFixedSize(true);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ArrayList<WallpaperItem> emptyArray = new ArrayList<>();
+        RecyclerView.Adapter emptyAdapter = new WallpaperAdapter(emptyArray);
+        recyclerView.setAdapter(emptyAdapter);
+        recyclerView.getViewTreeObserver().addOnPreDrawListener(
                 new ViewTreeObserver.OnPreDrawListener() {
                     @Override
                     public boolean onPreDraw() {
-                        mRecyclerView.getViewTreeObserver().removeOnPreDrawListener(this);
+                        recyclerView.getViewTreeObserver().removeOnPreDrawListener(this);
                         boolean slowDevice = Systems.isSamsungDevice(context);
-                        for (int i = 0; i < mRecyclerView.getChildCount(); i++) {
-                            View v = mRecyclerView.getChildAt(i);
+                        for (int i = 0; i < recyclerView.getChildCount(); i++) {
+                            View v = recyclerView.getChildAt(i);
                             v.setAlpha(0.0f);
                             v.animate().alpha(1.0f)
                                     .setDuration(300)
@@ -114,19 +127,18 @@ public class Wallpapers extends Fragment {
                         return true;
                     }
                 });
-        no_wallpapers.setVisibility(View.GONE);
-        no_network.setVisibility(View.GONE);
+        noWallpapers.setVisibility(View.GONE);
+        noNetwork.setVisibility(View.GONE);
 
         if (References.isNetworkAvailable(context)) {
             mainLoader = new downloadResources(this);
             mainLoader.execute(wallpaperUrl, CURRENT_WALLPAPERS);
         } else {
-            mRecyclerView.setVisibility(View.GONE);
+            recyclerView.setVisibility(View.GONE);
             materialProgressBar.setVisibility(View.GONE);
-            no_wallpapers.setVisibility(View.GONE);
-            no_network.setVisibility(View.VISIBLE);
+            noWallpapers.setVisibility(View.GONE);
+            noNetwork.setVisibility(View.VISIBLE);
         }
-
     }
 
     private static class downloadResources extends AsyncTask<String, Integer, String> {
@@ -142,7 +154,7 @@ public class Wallpapers extends Fragment {
             super.onPreExecute();
             Wallpapers wallpapers = ref.get();
             if (wallpapers != null) {
-                wallpapers.mRecyclerView.setVisibility(View.GONE);
+                wallpapers.recyclerView.setVisibility(View.GONE);
                 wallpapers.materialProgressBar.setVisibility(View.VISIBLE);
             }
         }
@@ -157,8 +169,8 @@ public class Wallpapers extends Fragment {
                     Map<String, String> newArray =
                             ReadCloudWallpaperFile.read(
                                     wallpapers.context.getCacheDir() + "/" + CURRENT_WALLPAPERS);
-                    ArrayList<WallpaperEntries> wallpaperEntries = new ArrayList<>();
-                    WallpaperEntries newEntry = new WallpaperEntries();
+                    ArrayList<WallpaperItem> wallpaperEntries = new ArrayList<>();
+                    WallpaperItem newEntry = new WallpaperItem();
 
                     for (Map.Entry<String, String> stringStringEntry : newArray.entrySet()) {
                         if (!stringStringEntry.getKey().toLowerCase(Locale.US)
@@ -172,19 +184,18 @@ public class Wallpapers extends Fragment {
                             // This is a preview image to be displayed on the card
                             newEntry.setWallpaperPreview(stringStringEntry.getValue());
                             wallpaperEntries.add(newEntry);
-                            newEntry = new WallpaperEntries();
+                            newEntry = new WallpaperItem();
                         }
                     }
                     RecyclerView.Adapter mAdapter = new WallpaperAdapter(wallpaperEntries);
-                    wallpapers.mRecyclerView.setAdapter(mAdapter);
+                    wallpapers.recyclerView.setAdapter(mAdapter);
 
                     if (wallpaperEntries.isEmpty())
-                        wallpapers.no_wallpapers.setVisibility(View.VISIBLE);
+                        wallpapers.noWallpapers.setVisibility(View.VISIBLE);
 
-                    wallpapers.mRecyclerView.setVisibility(View.VISIBLE);
+                    wallpapers.recyclerView.setVisibility(View.VISIBLE);
                     wallpapers.materialProgressBar.setVisibility(View.GONE);
-                } catch (Exception e) {
-                    // Suppress warning
+                } catch (Exception ignored) {
                 }
             }
         }

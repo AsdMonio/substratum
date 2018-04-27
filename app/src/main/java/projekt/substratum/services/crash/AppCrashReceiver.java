@@ -31,7 +31,6 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import projekt.substratum.R;
 import projekt.substratum.common.References;
@@ -47,22 +46,23 @@ public class AppCrashReceiver extends BroadcastReceiver {
     private static final String TAG = "AppCrashReceiver";
     private static final int NOTIFICATION_ID = 2476;
 
-    private static void postNotificationAndDisableOverlays(Context context, String
-            packageName,
+    private static void postNotificationAndDisableOverlays(Context context,
+                                                           String packageName,
                                                            List<String> overlays) {
-        String app_crash_title =
+        String appCrashTitle =
                 String.format(context.getString(R.string.app_crash_title), packageName);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context,
                 References.DEFAULT_NOTIFICATION_CHANNEL_ID);
         builder.setSmallIcon(R.drawable.notification_overlay_corruption);
-        builder.setContentTitle(app_crash_title);
+        builder.setContentTitle(appCrashTitle);
         builder.setContentText(context.getString(R.string.app_crash_content));
         builder.setOngoing(false);
         builder.setPriority(NotificationCompat.PRIORITY_MAX);
         builder.setCategory(NotificationCompat.CATEGORY_SERVICE);
-        NotificationManager mNotifyMgr =
+        NotificationManager notificationManager =
                 (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
-        if (mNotifyMgr != null) mNotifyMgr.notify(NOTIFICATION_ID, builder.build());
+        if (notificationManager != null)
+            notificationManager.notify(NOTIFICATION_ID, builder.build());
 
         ThemeManager.disableOverlay(context, new ArrayList<>(overlays));
     }
@@ -73,8 +73,7 @@ public class AppCrashReceiver extends BroadcastReceiver {
                     .getApplicationInfo(packageName, 0);
             packageName = context.getPackageManager()
                     .getApplicationLabel(applicationInfo).toString();
-        } catch (PackageManager.NameNotFoundException e) {
-            // Suppress warning
+        } catch (PackageManager.NameNotFoundException ignored) {
         }
         return packageName;
     }
@@ -105,7 +104,7 @@ public class AppCrashReceiver extends BroadcastReceiver {
                         overlays);
 
             }
-        } else if (Objects.equals(packageName, SYSTEMUI)) {
+        } else if (SYSTEMUI.equals(packageName)) {
             if (ThemeManager.listEnabledOverlaysForTarget(context, SYSTEMUI).isEmpty()) return;
             switch (sharedPreferences.getInt("sysui_crash_count", 0)) {
                 case 0:

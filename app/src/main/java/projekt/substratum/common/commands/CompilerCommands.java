@@ -37,12 +37,16 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import projekt.substratum.BuildConfig;
+import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
-import projekt.substratum.common.Systems;
 
+import static projekt.substratum.common.References.COMMON_PACKAGE;
 import static projekt.substratum.common.References.ENABLE_AAPT_OUTPUT;
-import static projekt.substratum.common.References.permissionSamsungOverlay;
+import static projekt.substratum.common.References.SAMSUNG_OVERLAY_PERMISSION;
+import static projekt.substratum.common.Resources.allowedForSamsungPermission;
+import static projekt.substratum.common.Systems.checkOreo;
 import static projekt.substratum.common.Systems.getDeviceID;
+import static projekt.substratum.common.Systems.isNewSamsungDevice;
 
 public enum CompilerCommands {
     ;
@@ -78,9 +82,9 @@ public enum CompilerCommands {
                                                String versionName,
                                                String targetPackage,
                                                String themeParent,
-                                               Boolean themeOms,
+                                               boolean themeOms,
                                                Integer legacyPriority,
-                                               Boolean baseVariantNull,
+                                               boolean baseVariantNull,
                                                String type1a,
                                                String type1b,
                                                String type1c,
@@ -88,19 +92,10 @@ public enum CompilerCommands {
                                                String type3,
                                                String type4,
                                                String packageNameOverride) {
-        String packageName;
-        if (baseVariantNull) {
-            packageName = overlayPackage + '.' + themeName;
-        } else {
-            packageName = overlayPackage + '.' + themeName +
-                    variantName + baseVariantName;
-        }
-        if (isNotNullOrEmpty(packageNameOverride)) {
-            packageName = packageNameOverride;
-        }
+        String packageName = overlayPackage + '.' + themeName;
+        if (!baseVariantNull) packageName = packageName + variantName + baseVariantName;
+        if (isNotNullOrEmpty(packageNameOverride)) packageName = packageNameOverride;
 
-        boolean showOverlayInSamsungSettings =
-                Systems.isSamsungDevice(context) && References.toggleShowSamsungOverlayInSettings;
         try {
             DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory
                     .newInstance();
@@ -114,15 +109,18 @@ public enum CompilerCommands {
             rootElement.setAttribute("package", packageName);
             rootElement.setAttribute("android:versionName", versionName);
 
+            // Special permissions for special devices
+            if (isNewSamsungDevice() && allowedForSamsungPermission(targetPackage)) {
+                Element permissionElement = document.createElement("uses-permission");
+                permissionElement.setAttribute("android:name", SAMSUNG_OVERLAY_PERMISSION);
+                rootElement.appendChild(permissionElement);
+            }
+
             Element overlayElement = document.createElement("overlay");
             if (!themeOms)
                 overlayElement.setAttribute("android:priority", String.valueOf(legacyPriority));
             overlayElement.setAttribute("android:targetPackage", targetPackage);
-            if (showOverlayInSamsungSettings) {
-                Element samsungPermissionElement = document.createElement("uses-permission");
-                samsungPermissionElement.setAttribute("android:name", permissionSamsungOverlay);
-                overlayElement.appendChild(samsungPermissionElement);
-            }
+            if (checkOreo()) overlayElement.setAttribute("android:isStatic", "false");
             rootElement.appendChild(overlayElement);
 
             Element applicationElement = document.createElement("application");
@@ -211,50 +209,56 @@ public enum CompilerCommands {
     /**
      * Create the AAPT working shell commands
      *
-     * @param work_area          Working area
-     * @param targetPkg          Target package to build against
-     * @param overlay_package    Overlay package
-     * @param theme_name         Theme name
-     * @param legacySwitch       Fallback support
-     * @param additional_variant Additional variant (type2)
-     * @param asset_replacement  Asset replacement (type4)
-     * @param context            Context
-     * @param dir                Volatile directory to keep changes in
+     * @param workArea          Working area
+     * @param targetPkg         Target package to build against
+     * @param overlayPackage    Overlay package
+     * @param themeName         Theme name
+     * @param legacySwitch      Fallback support
+     * @param additionalVariant Additional variant (type2)
+     * @param assetReplacement  Asset replacement (type4)
+     * @param context           Context
+     * @param dir               Volatile directory to keep changes in
      * @return Returns a string to allow the app to execute
      */
+    // This is necessary to avoid making a massive unreadable soup
+    // inside the method.
     @SuppressWarnings("StringConcatenationInsideStringBufferAppend")
-    public static String createAAPTShellCommands(String work_area,
+    public static String createAAPTShellCommands(String workArea,
                                                  String targetPkg,
-                                                 String overlay_package,
-                                                 String theme_name,
+                                                 String overlayPackage,
+                                                 String themeName,
                                                  boolean legacySwitch,
-                                                 CharSequence additional_variant,
-                                                 CharSequence asset_replacement,
+                                                 CharSequence additionalVariant,
+                                                 CharSequence assetReplacement,
                                                  Context context,
                                                  String dir) {
         StringBuilder sb = new StringBuilder();
         // Initialize the AAPT command
         sb.append(context.getFilesDir().getAbsolutePath() + "/aapt p ");
         // Compile with specified manifest
-        sb.append("-M " + work_area + "/AndroidManifest.xml ");
+        sb.append("-M " + workArea + "/AndroidManifest.xml ");
         // If the user picked a variant (type2), compile multiple directories
-        sb.append(((isNotNullOrEmpty(additional_variant)) ?
-                ("-S " + work_area + '/' + "type2_" + additional_variant + "/ ") : ""));
+        sb.append(((isNotNullOrEmpty(additionalVariant)) ?
+                ("-S " + workArea + '/' + "type2_" + additionalVariant + "/ ") : ""));
         // If the user picked an asset variant (type4), compile multiple directories
-        sb.append(((isNotNullOrEmpty(asset_replacement)) ?
-                ("-A " + work_area + "/assets/ ") : ""));
+        sb.append(((isNotNullOrEmpty(assetReplacement)) ?
+                ("-A " + workArea + "/assets/ ") : ""));
         // We will compile a volatile directory where we make temporary changes to
-        sb.append("-S " + work_area + dir + "/ ");
+        sb.append("-S " + workArea + dir + "/ ");
         // Build upon the system's Android framework
         sb.append("-I " + "/system/framework/framework-res.apk ");
+        // Build upon the common Substratum framework
+        if (Packages.isPackageInstalled(context, COMMON_PACKAGE)) {
+            sb.append("-I " + Packages.getInstalledDirectory(context, COMMON_PACKAGE) + ' ');
+        }
         // If running on the AppCompat commits (first run), it will build upon the app too
         if (targetPkg != null && !targetPkg.equals("null")) {
             sb.append((legacySwitch) ? "" : ("-I " + targetPkg + ' '));
         }
 
         // Specify the file output directory
-        sb.append("-F " + work_area + '/' + overlay_package + '.' +
-                theme_name + "-unsigned.apk ");
+        sb.append("-F " + workArea + '/' + overlayPackage + '.' +
+                themeName + "-unsigned.apk ");
         // arguments to conclude the AAPT build
         if (ENABLE_AAPT_OUTPUT) {
             sb.append("-v ");
