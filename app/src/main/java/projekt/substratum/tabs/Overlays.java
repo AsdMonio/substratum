@@ -124,6 +124,7 @@ import static projekt.substratum.common.Internal.MIX_AND_MATCH_IA_TO_OVERLAYS;
 import static projekt.substratum.common.Internal.OVERLAYS_DIR;
 import static projekt.substratum.common.Internal.OVERLAY_REFRESH;
 import static projekt.substratum.common.Internal.PACKAGE_INSTALL_URI;
+import static projekt.substratum.common.Internal.SCROLL_UP;
 import static projekt.substratum.common.Internal.SECRET_KEY_SPEC;
 import static projekt.substratum.common.Internal.SHEET_COMMAND;
 import static projekt.substratum.common.Internal.START_JOB_ACTION;
@@ -163,7 +164,6 @@ import static projekt.substratum.util.helpers.MapUtils.sortMapByValues;
 public class Overlays extends Fragment {
 
     public static AsyncTask mainLoader = null;
-    public static RecyclerView recyclerView;
     // Theme instance based variables, used globally amongst all Overlays* files
     public String themeName;
     public String themePid;
@@ -188,6 +188,7 @@ public class Overlays extends Fragment {
     public Switch toggleAll;
     public Spinner baseSpinner;
     Context context;
+    RecyclerView recyclerView;
     TextView toggleAllOverlaysText;
     RelativeLayout toggleZone;
     SwipeRefreshLayout swipeRefreshLayout;
@@ -198,6 +199,13 @@ public class Overlays extends Fragment {
     private LocalBroadcastManager localBroadcastManager;
     private RefreshReceiver refreshReceiver;
     private boolean firstStart = true;
+
+    /**
+     * Scroll up the RecyclerView smoothly
+     */
+    public void scrollUp() {
+        recyclerView.smoothScrollToPosition(0);
+    }
 
     /**
      * Get the activity's view through a fragment for LunchBar invokes
@@ -647,10 +655,6 @@ public class Overlays extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-
-        recyclerView.invalidate();
-        recyclerView = null;
-
         try {
             localBroadcastManager.unregisterReceiver(refreshReceiver);
         } catch (IllegalArgumentException ignored) {
@@ -1043,10 +1047,12 @@ public class Overlays extends Fragment {
         private String parsedThemeName;
         private ArrayList<OverlaysItem> adapterList;
         private List<String> currentOverlays;
+        private String themePid;
 
         LoadOverlays(Overlays fragment) {
             super();
             ref = new WeakReference<>(fragment);
+            themePid = ref.get().themePid;
         }
 
         static void setViews(Overlays fragment, boolean state) {
@@ -1452,6 +1458,7 @@ public class Overlays extends Fragment {
                 OverlaysItem overlaysItem =
                         new OverlaysItem(
                                 loadOverlays.parsedThemeName,
+                                loadOverlays.themePid,
                                 packageName,
                                 packageIdentifier,
                                 false,
@@ -1553,6 +1560,9 @@ public class Overlays extends Fragment {
                         setMixAndMatchMode(intent.getBooleanExtra(
                                 MIX_AND_MATCH_IA_TO_OVERLAYS, false));
                     }
+                    break;
+                case SCROLL_UP:
+                    scrollUp();
                     break;
             }
         }

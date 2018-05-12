@@ -30,6 +30,7 @@ import dalvik.system.DexClassLoader;
 import static projekt.substratum.common.References.INTERFACER_PACKAGE;
 import static projekt.substratum.common.References.SUBSTRATUM_LOG;
 import static projekt.substratum.common.Systems.checkAndromeda;
+import static projekt.substratum.common.Systems.checkOreo;
 import static projekt.substratum.common.Systems.checkSubstratumService;
 import static projekt.substratum.common.Systems.checkThemeInterfacer;
 import static projekt.substratum.common.Systems.isSamsungDevice;
@@ -51,51 +52,6 @@ public enum Resources {
     // Filter to adjust Settings elements
     public static final String[] ALLOWED_SETTINGS_ELEMENTS = {
             SETTINGS_ICONS,
-    };
-
-    // Default core packages
-    @SuppressWarnings("unused")
-    public static final String[] CORE_SYSTEM_PACKAGES = {
-
-            // Core AOSP System Packages
-            "android",
-            "com.android.browser",
-            "com.android.calculator2",
-            "com.android.calendar",
-            "com.android.cellbroadcastreceiver",
-            "com.android.contacts",
-            "com.android.deskclock",
-            "com.android.dialer",
-            "com.android.documentsui",
-            "com.android.emergency",
-            "com.android.gallery3d",
-            "com.android.inputmethod.latin",
-            "com.android.launcher3",
-            "com.android.messaging",
-            "com.android.mms",
-            "com.android.musicfx",
-            "com.android.packageinstaller",
-            "com.android.phone",
-            "com.android.providers.media",
-            "com.android.server.telecom",
-            "com.android.settings",
-            "com.android.systemui",
-
-            // Device Specific Packages
-            "com.cyanogenmod.settings.device",
-            "org.lineageos.settings.device",
-
-            // Google Packages
-            "com.google.android.apps.nexuslauncher",
-            "com.google.android.calculator",
-            "com.google.android.contacts",
-            "com.google.android.deskclock",
-            "com.google.android.dialer",
-            "com.google.android.packageinstaller",
-            "com.google.android.tts",
-
-            // Organization Packages
-            "projekt.substratum",
     };
 
     public static final String[] SYSTEM_FAULT_EXCEPTIONS = {
@@ -138,8 +94,7 @@ public enum Resources {
     // These packages will be exempt from having the Samsung overlay permission added onto it
     private static final String[] SAMSUNG_PERMISSION_BLACKLIST_PACKAGES = {
             "com.sec.android.app.music",
-            "com.sec.android.app.voicenote",
-            "com.wssyncmldm"
+            "com.sec.android.app.voicenote"
     };
 
     // Filter to adjust framework elements
@@ -228,6 +183,8 @@ public enum Resources {
         if (checkSubstratumService(context)) {
             Log.d(SUBSTRATUM_LOG, "This system fully supports font hotswapping.");
             return true;
+        } else if (checkOreo() && !checkSubstratumService(context)) {
+            return false;
         }
         try {
             final Class<?> cls = Class.forName("android.graphics.Typeface");

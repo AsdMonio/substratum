@@ -54,6 +54,7 @@ import projekt.substratum.common.References;
 import projekt.substratum.common.Resources;
 import projekt.substratum.common.Systems;
 import projekt.substratum.common.commands.ElevatedCommands;
+import projekt.substratum.common.commands.SamsungOverlayCacher;
 import projekt.substratum.util.helpers.Root;
 
 import static android.os.Build.VERSION.SDK_INT;
@@ -61,6 +62,7 @@ import static android.os.Build.VERSION_CODES.O;
 import static projekt.substratum.common.Packages.getOverlayParent;
 import static projekt.substratum.common.Packages.getOverlayTarget;
 import static projekt.substratum.common.Packages.isPackageInstalled;
+import static projekt.substratum.common.References.EXTERNAL_STORAGE_SAMSUNG_OVERLAY_CACHE;
 import static projekt.substratum.common.References.INTERFACER_PACKAGE;
 import static projekt.substratum.common.References.LEGACY_NEXUS_DIR;
 import static projekt.substratum.common.Resources.FRAMEWORK;
@@ -76,6 +78,8 @@ import static projekt.substratum.common.Systems.checkAndromeda;
 import static projekt.substratum.common.Systems.checkOMS;
 import static projekt.substratum.common.Systems.checkSubstratumService;
 import static projekt.substratum.common.Systems.checkThemeInterfacer;
+import static projekt.substratum.common.Systems.isNewSamsungDevice;
+import static projekt.substratum.common.Systems.isNewSamsungDeviceAndromeda;
 
 public enum ThemeManager {
     ;
@@ -170,7 +174,7 @@ public enum ThemeManager {
         } else if (hasThemeInterfacer) {
             ThemeInterfacerService.enableOverlays(
                     overlays, shouldRestartUI(context, overlays));
-        } else if (hasAndromeda) {
+        } else if (hasAndromeda && !isNewSamsungDeviceAndromeda(context)) {
             if (!AndromedaService.enableOverlays(overlays)) {
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.post(() ->
@@ -215,7 +219,7 @@ public enum ThemeManager {
         } else if (checkThemeInterfacer(context)) {
             ThemeInterfacerService.disableOverlays(
                     overlays, shouldRestartUI(context, overlays));
-        } else if (checkAndromeda(context)) {
+        } else if (checkAndromeda(context) && !isNewSamsungDeviceAndromeda(context)) {
             if (!AndromedaService.disableOverlays(overlays)) {
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.post(() ->
@@ -255,7 +259,7 @@ public enum ThemeManager {
         } else if (checkThemeInterfacer(context)) {
             ThemeInterfacerService.setPriority(
                     overlays, shouldRestartUI(context, overlays));
-        } else if (checkAndromeda(context)) {
+        } else if (checkAndromeda(context) && !isNewSamsungDeviceAndromeda(context)) {
             if (!AndromedaService.setPriority(overlays)) {
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.post(() ->
@@ -427,7 +431,8 @@ public enum ThemeManager {
             }
         } catch (Exception e) {
             // At this point, we probably ran into a legacy command or stock OMS
-            if ((Systems.checkOMS(context) || Systems.checkOreo()) &&
+            if (!isNewSamsungDeviceAndromeda(context) &&
+                    (Systems.checkOMS(context) || Systems.checkOreo()) &&
                     !MainActivity.instanceBasedAndromedaFailure) {
                 String prefix;
                 if (overlayState == STATE_ENABLED) {
@@ -539,18 +544,26 @@ public enum ThemeManager {
                 // We now know this is not OMS, so fallback for Samsung and Legacy or
                 // offline Andromeda
                 if ((overlayState == STATE_LIST_ALL_OVERLAYS) || (overlayState == STATE_ENABLED)) {
-                    if (Systems.isSamsungDevice(context) ||
+                    if (isNewSamsungDeviceAndromeda(context) ||
+                            Systems.isSamsungDevice(context) ||
                             MainActivity.instanceBasedAndromedaFailure) {
                         PackageManager pm = context.getPackageManager();
-                        List<ApplicationInfo> packages =
-                                pm.getInstalledApplications(PackageManager.GET_META_DATA);
+                        List<ApplicationInfo> packages = pm.getInstalledApplications(0);
                         list.clear();
-                        for (ApplicationInfo packageInfo : packages) {
-                            if (Packages.getOverlayMetadata(
-                                    context,
-                                    packageInfo.packageName,
-                                    References.metadataOverlayParent) != null) {
-                                list.add(packageInfo.packageName);
+
+                        if ((isNewSamsungDevice() || isNewSamsungDeviceAndromeda(context)) &&
+                                new File(EXTERNAL_STORAGE_SAMSUNG_OVERLAY_CACHE).exists()) {
+                            SamsungOverlayCacher samsungOverlayCacher =
+                                    new SamsungOverlayCacher(context);
+                            list.addAll(samsungOverlayCacher.getOverlays(false));
+                        } else {
+                            for (ApplicationInfo packageInfo : packages) {
+                                if (Packages.getOverlayMetadata(
+                                        context,
+                                        packageInfo.packageName,
+                                        References.metadataOverlayParent) != null) {
+                                    list.add(packageInfo.packageName);
+                                }
                             }
                         }
                     } else {
@@ -688,7 +701,7 @@ public enum ThemeManager {
             ArrayList<String> list = new ArrayList<>();
             list.add(overlay);
             ThemeInterfacerService.installOverlays(list);
-        } else if (checkAndromeda(context)) {
+        } else if (checkAndromeda(context) && !isNewSamsungDeviceAndromeda(context)) {
             List<String> list = new ArrayList<>();
             list.add(overlay);
             if (!AndromedaService.installOverlays(list)) {
@@ -742,6 +755,7 @@ public enum ThemeManager {
                 );
             }
         } else if (MainActivity.instanceBasedAndromedaFailure ||
+                (Systems.isNewSamsungDeviceAndromeda(context)) ||
                 (Systems.isSamsungDevice(context) &&
                         !Root.checkRootAccess() &&
                         !Root.requestRootAccess())) {

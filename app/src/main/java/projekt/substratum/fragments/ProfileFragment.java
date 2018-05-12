@@ -229,14 +229,14 @@ public class ProfileFragment extends Fragment {
                 .inflate(inflater, R.layout.profile_fragment, container, false);
         View view = viewBinding.getRoot();
         headerProgress = viewBinding.headerLoadingBar;
-        backupName = viewBinding.edittext;
-        backupButton = viewBinding.backupButton;
-        profileSelector = viewBinding.restoreSpinner;
-        imageButton = viewBinding.removeProfile;
-        restoreButton = viewBinding.restoreButton;
-        scheduledProfileCard = viewBinding.cardViewList3;
+        backupName = viewBinding.backupCardProfileNameEntry;
+        backupButton = viewBinding.backupCardActionButton;
+        profileSelector = viewBinding.restoreCardProfileSelectSpinner;
+        imageButton = viewBinding.restoreCardDeleteButton;
+        restoreButton = viewBinding.restoreCardActionButton;
+        scheduledProfileCard = viewBinding.scheduledProfilesCard;
         scheduledProfileLayout = viewBinding.scheduledProfileCardContentContainer;
-        dayNightSwitch = viewBinding.profileSwitch;
+        dayNightSwitch = viewBinding.scheduledProfilesEnableSwitch;
         startTime = viewBinding.nightStartTime;
         endTime = viewBinding.nightEndTime;
         dayProfile = viewBinding.daySpinner;
@@ -320,9 +320,7 @@ public class ProfileFragment extends Fragment {
                                     dialog2.show();
                                 }
                                 selectedBackup.add(items[which]);
-                            } else if (selectedBackup.contains(items[which])) {
-                                selectedBackup.remove(items[which]);
-                            }
+                            } else selectedBackup.remove(items[which]);
                         })
                         .setPositiveButton(R.string.profile_dialog_ok, null)
                         .setNegativeButton(R.string.dialog_cancel, null)
@@ -422,7 +420,9 @@ public class ProfileFragment extends Fragment {
             }
         });
 
-        if (Systems.checkOMS(context) && Systems.checkThemeInterfacer(getContext())) {
+        if (Systems.checkOMS(context) &&
+                (Systems.checkThemeInterfacer(getContext()) ||
+                        Systems.checkSubstratumService(getContext()))) {
             dayNightSwitch.setOnCheckedChangeListener((compoundButton, b) -> {
                 if (b) {
                     scheduledProfileLayout.expand();

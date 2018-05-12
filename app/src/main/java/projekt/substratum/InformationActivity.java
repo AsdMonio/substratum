@@ -121,6 +121,7 @@ import static projekt.substratum.common.Internal.ENCRYPTION_KEY_EXTRA;
 import static projekt.substratum.common.Internal.IV_ENCRYPTION_KEY_EXTRA;
 import static projekt.substratum.common.Internal.MIX_AND_MATCH;
 import static projekt.substratum.common.Internal.MIX_AND_MATCH_IA_TO_OVERLAYS;
+import static projekt.substratum.common.Internal.SCROLL_UP;
 import static projekt.substratum.common.Internal.SHEET_COMMAND;
 import static projekt.substratum.common.Internal.START_JOB_ACTION;
 import static projekt.substratum.common.Internal.THEME_NAME;
@@ -522,14 +523,6 @@ public class InformationActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
         toolbar.setNavigationOnClickListener(v -> onBackPressed());
-        toolbar.setOnClickListener(v -> {
-            if (Overlays.recyclerView != null) {
-                Overlays.recyclerView.smoothScrollToPosition(0);
-            }
-            if (Wallpapers.recyclerView != null) {
-                Wallpapers.recyclerView.smoothScrollToPosition(0);
-            }
-        });
 
         // Hero Image
         try {
@@ -780,6 +773,23 @@ public class InformationActivity extends AppCompatActivity {
             }
         });
 
+        toolbar.setOnClickListener(v -> {
+            if (adapt != null) {
+                Intent intent = new Intent();
+                Object obj = adapt.instantiateItem(viewPager, tabPosition);
+                switch (obj.getClass().getSimpleName().toLowerCase(Locale.US)) {
+                    case overlaysFragment:
+                        intent = new Intent("Overlays" + START_JOB_ACTION);
+                        intent.putExtra(SHEET_COMMAND, SCROLL_UP);
+                        break;
+                    case wallpaperFragment:
+                        intent = new Intent("Wallpapers" + START_JOB_ACTION);
+                        break;
+                }
+                localBroadcastManager.sendBroadcast(intent);
+            }
+        });
+
         // This is for the Floating Action Menu actions
         Intent intent = new Intent("Overlays" + START_JOB_ACTION);
         if (!Systems.checkOMS(this) && !Systems.isSamsungDevice(context)) {
@@ -937,7 +947,7 @@ public class InformationActivity extends AppCompatActivity {
                 (!isOMS && !Root.checkRootAccess())) {
             menu.findItem(R.id.restart_systemui).setVisible(false);
         }
-        if (!isOMS) {
+        if (Systems.isNewSamsungDeviceAndromeda(context) || !isOMS) {
             menu.findItem(R.id.disable).setVisible(false);
             menu.findItem(R.id.enable).setVisible(false);
         }

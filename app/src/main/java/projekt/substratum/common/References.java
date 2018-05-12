@@ -174,7 +174,8 @@ public enum References {
             References.metadataOverlayType3,
             References.metadataOverlayType4
     };
-    public static final String metadataOverlayVersion = "Substratum_Version";
+    public static final String metadataOverlayVersion = "Substratum_OverlayVersion";
+    public static final String metadataThemeVersion = "Substratum_Version";
     public static final String metadataSamsungSupport = "Substratum_Samsung";
     public static final String resourceChangelog = "ThemeChangelog";
     // These strings control the folders to detect in the assets
@@ -194,6 +195,9 @@ public enum References {
     // These strings control the directories that Substratum uses
     public static final String EXTERNAL_STORAGE_CACHE = Environment.getExternalStorageDirectory()
             .getAbsolutePath() + "/.substratum/";
+    public static final String EXTERNAL_STORAGE_SAMSUNG_OVERLAY_CACHE =
+            Environment.getExternalStorageDirectory().getAbsolutePath() +
+                    "/.samsung_overlays.xml";
     public static final String LOGCHAR_DIR = Environment.getExternalStorageDirectory()
             .getAbsolutePath() + "/substratum" + File.separator + "LogCharReports";
     public static final String SUBSTRATUM_BUILDER_CACHE = "/SubstratumBuilder/";
@@ -603,6 +607,7 @@ public enum References {
         editor.putBoolean("hide_app_checkbox", false);
         editor.putBoolean("auto_disable_target_overlays", false);
         editor.putBoolean("lite_mode", false);
+        editor.putBoolean("sungstromeda_mode", true);
         editor.putString(APP_THEME, DEFAULT_THEME);
         editor.putInt("grid_style_cards_count", DEFAULT_GRID_COUNT);
         editor.putInt("legacy_overlay_priority", DEFAULT_PRIORITY);

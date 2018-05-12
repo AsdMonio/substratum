@@ -22,13 +22,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
+import android.content.*;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.databinding.DataBindingUtil;
@@ -59,8 +53,21 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.SearchView;
 import android.widget.TextView;
-
-import com.mikepenz.aboutlibraries.ui.LibsSupportFragment;
+import projekt.substratum.activities.launch.ShowcaseActivity;
+import projekt.substratum.common.*;
+import projekt.substratum.common.analytics.FirebaseAnalytics;
+import projekt.substratum.common.commands.ElevatedCommands;
+import projekt.substratum.common.commands.FileOperations;
+import projekt.substratum.common.platform.AndromedaService;
+import projekt.substratum.common.platform.ThemeManager;
+import projekt.substratum.databinding.MainActivityBinding;
+import projekt.substratum.fragments.*;
+import projekt.substratum.services.binder.AndromedaBinderService;
+import projekt.substratum.services.floatui.SubstratumFloatInterface;
+import projekt.substratum.services.tiles.FloatUiTile;
+import projekt.substratum.util.helpers.BinaryInstaller;
+import projekt.substratum.util.helpers.LocaleHelper;
+import projekt.substratum.util.helpers.Root;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
@@ -70,61 +77,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import projekt.substratum.activities.launch.ShowcaseActivity;
-import projekt.substratum.common.Broadcasts;
-import projekt.substratum.common.Packages;
-import projekt.substratum.common.References;
-import projekt.substratum.common.Restore;
-import projekt.substratum.common.Systems;
-import projekt.substratum.common.Theming;
-import projekt.substratum.common.analytics.FirebaseAnalytics;
-import projekt.substratum.common.commands.ElevatedCommands;
-import projekt.substratum.common.commands.FileOperations;
-import projekt.substratum.common.platform.AndromedaService;
-import projekt.substratum.common.platform.ThemeManager;
-import projekt.substratum.databinding.MainActivityBinding;
-import projekt.substratum.fragments.ManagerFragment;
-import projekt.substratum.fragments.PriorityListFragment;
-import projekt.substratum.fragments.PriorityLoaderFragment;
-import projekt.substratum.fragments.ProfileFragment;
-import projekt.substratum.fragments.SettingsFragment;
-import projekt.substratum.fragments.ThemeFragment;
-import projekt.substratum.services.binder.AndromedaBinderService;
-import projekt.substratum.services.floatui.SubstratumFloatInterface;
-import projekt.substratum.services.tiles.FloatUiTile;
-import projekt.substratum.util.helpers.BinaryInstaller;
-import projekt.substratum.util.helpers.LocaleHelper;
-import projekt.substratum.util.helpers.Root;
-
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS;
-import static projekt.substratum.common.Activities.launchActivityUrl;
-import static projekt.substratum.common.Activities.launchExternalActivity;
-import static projekt.substratum.common.Activities.launchInternalActivity;
+import static projekt.substratum.common.Activities.*;
 import static projekt.substratum.common.Internal.ANDROMEDA_RECEIVER;
 import static projekt.substratum.common.Internal.MAIN_ACTIVITY_RECEIVER;
 import static projekt.substratum.common.Packages.getAppVersionCode;
-import static projekt.substratum.common.References.ANDROMEDA_PACKAGE;
-import static projekt.substratum.common.References.BYPASS_SYSTEM_VERSION_CHECK;
-import static projekt.substratum.common.References.ENABLE_ROOT_CHECK;
-import static projekt.substratum.common.References.EXTERNAL_STORAGE_CACHE;
-import static projekt.substratum.common.References.LOGCHAR_DIR;
-import static projekt.substratum.common.References.NO_THEME_ENGINE;
-import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_N_UNROOTED;
-import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_ANDROMEDA;
-import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_ROOTED;
-import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_UNROOTED;
-import static projekt.substratum.common.References.OVERLAY_UPDATE_RANGE;
-import static projekt.substratum.common.References.SAMSUNG_THEME_ENGINE_N;
-import static projekt.substratum.common.References.SST_ADDON_PACKAGE;
-import static projekt.substratum.common.References.SUBSTRATUM_BUILDER;
-import static projekt.substratum.common.References.SUBSTRATUM_BUILDER_CACHE;
-import static projekt.substratum.common.References.SUBSTRATUM_LOG;
-import static projekt.substratum.common.Systems.checkAndromeda;
-import static projekt.substratum.common.Systems.checkThemeSystemModule;
-import static projekt.substratum.common.Systems.checkUsagePermissions;
-import static projekt.substratum.common.Systems.isSamsung;
-import static projekt.substratum.common.Systems.isSamsungDevice;
+import static projekt.substratum.common.References.*;
+import static projekt.substratum.common.Systems.*;
 import static projekt.substratum.common.commands.FileOperations.delete;
 import static projekt.substratum.common.platform.ThemeManager.uninstallOverlay;
 
@@ -142,10 +102,9 @@ public class MainActivity extends AppCompatActivity implements
     public static boolean instanceBasedAndromedaFailure;
     public SearchView searchView;
     public TextView actionbarContent;
-    TextView actionbarTitle;
+    private TextView actionbarTitle;
     Toolbar toolbar;
     BottomNavigationView bottomBar;
-    View bottomBarShadow;
     private ActionBar supportActionBar;
     private int permissionCheck = PackageManager.PERMISSION_DENIED;
     private Dialog progressDialog;
@@ -165,10 +124,10 @@ public class MainActivity extends AppCompatActivity implements
      */
     private static boolean checkIfOverlaysOutdated(Context context) {
         List<String> overlays = ThemeManager.listAllOverlays(context);
-        for (int i = 0; i < overlays.size(); i++) {
+        for (String overlay : overlays) {
             int current_version = Packages.getOverlaySubstratumVersion(
                     context,
-                    overlays.get(i));
+                    overlay);
             if ((current_version <= OVERLAY_UPDATE_RANGE) && (current_version != 0)) {
                 Log.d("OverlayOutdatedCheck",
                         "An overlay is returning " + current_version +
@@ -201,7 +160,7 @@ public class MainActivity extends AppCompatActivity implements
      *
      * @param title Usually for fragment changes
      */
-    public void switchToStockToolbar(CharSequence title) {
+    private void switchToStockToolbar(CharSequence title) {
         showToolbarHamburger();
         actionbarContent.setVisibility(View.GONE);
         actionbarTitle.setVisibility(View.GONE);
@@ -210,7 +169,9 @@ public class MainActivity extends AppCompatActivity implements
 
     public void switchToDefaultToolbarText() {
         showToolbarHamburger();
-        if (Systems.isSamsung(context)) {
+        if (Systems.isNewSamsungDeviceAndromeda(context)) {
+            switchToStockToolbar(getString(R.string.samsung_oreo_app_name));
+        } else if (Systems.isSamsung(context)) {
             switchToStockToolbar(getString(R.string.samsung_app_name));
         } else if (!Systems.checkOMS(context)) {
             switchToStockToolbar(getString(R.string.legacy_app_name));
@@ -246,7 +207,9 @@ public class MainActivity extends AppCompatActivity implements
         if ((searchView != null) && !searchView.isIconified()) {
             searchView.setIconified(true);
         }
-        if (Systems.isSamsung(context)) {
+        if (Systems.isNewSamsungDeviceAndromeda(context)) {
+            switchToStockToolbar(getString(R.string.samsung_oreo_app_name));
+        } else if (Systems.isSamsung(context)) {
             switchToStockToolbar(getString(R.string.samsung_app_name));
         } else if (!Systems.checkOMS(context)) {
             switchToStockToolbar(getString(R.string.legacy_app_name));
@@ -260,42 +223,19 @@ public class MainActivity extends AppCompatActivity implements
         supportInvalidateOptionsMenu();
     }
 
-    /**
-     * Transact to the license fragment
-     *
-     * @param fragment Name of the fragment in projekt.substratum.fragments
-     */
-    @SuppressWarnings("unused")
-    private void switchFragmentToLicenses(LibsSupportFragment fragment) {
-        if ((searchView != null) && !searchView.isIconified()) {
-            searchView.setIconified(true);
-        }
-        if (Systems.isSamsung(context)) {
-            switchToStockToolbar(getString(R.string.samsung_app_name));
-        } else if (!Systems.checkOMS(context)) {
-            switchToStockToolbar(getString(R.string.legacy_app_name));
-        } else {
-            switchToStockToolbar(getString(R.string.nav_main));
-        }
-        FragmentTransaction tx = getSupportFragmentManager().beginTransaction();
-        tx.replace(R.id.main, fragment);
-        tx.commitAllowingStateLoss();
-        supportInvalidateOptionsMenu();
-    }
-
     @Override
     public void onDestroy() {
         super.onDestroy();
         try {
             localBroadcastManager.unregisterReceiver(killReceiver);
-        } catch (Exception e) {
+        } catch (final Exception ignored) {
             // Unregistered already
         }
 
         if (Systems.isAndromedaDevice(context)) {
             try {
                 localBroadcastManager.unregisterReceiver(andromedaReceiver);
-            } catch (Exception e) {
+            } catch (final Exception ignored) {
                 // Unregistered already
             }
         }
@@ -324,16 +264,16 @@ public class MainActivity extends AppCompatActivity implements
         actionbarContent = binding.themeCount;
         actionbarTitle = binding.activityTitle;
         toolbar = binding.toolbar;
-        bottomBarShadow = binding.bottomBarShadow;
         bottomBar = binding.bottomBar;
 
         toolbar.setOnClickListener(v -> {
-            if (ManagerFragment.recyclerView != null)
-                ManagerFragment.recyclerView.smoothScrollToPosition(0);
-            if (ThemeFragment.recyclerView != null)
-                ThemeFragment.recyclerView.smoothScrollToPosition(0);
-            if (SettingsFragment.getInstance() != null) {
-                SettingsFragment.getInstance().getListView().smoothScrollToPosition(0);
+            Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.main);
+            if (currentFragment instanceof ThemeFragment) {
+                ((ThemeFragment) currentFragment).scrollUp();
+            } else if (currentFragment instanceof ManagerFragment) {
+                ((ManagerFragment) currentFragment).scrollUp();
+            } else if (currentFragment instanceof SettingsFragment) {
+                ((SettingsFragment) currentFragment).scrollUp();
             }
         });
 
@@ -364,7 +304,9 @@ public class MainActivity extends AppCompatActivity implements
         }
 
         supportActionBar = getSupportActionBar();
-        if (Systems.isSamsung(context)) {
+        if (Systems.isNewSamsungDeviceAndromeda(context)) {
+            switchToStockToolbar(getString(R.string.samsung_oreo_app_name));
+        } else if (Systems.isSamsung(context)) {
             switchToStockToolbar(getString(R.string.samsung_app_name));
         } else if (!Systems.checkOMS(context)) {
             switchToStockToolbar(getString(R.string.legacy_app_name));
@@ -465,6 +407,18 @@ public class MainActivity extends AppCompatActivity implements
                                 finishAffinity())
                         .setCancelable(false)
                         .show();
+                return;
+            } else if (!checkSubstratumServiceApi(context)) {
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.sysserv_api_check_dialog_title)
+                        .setMessage(R.string.sysserv_api_check_dialog_text)
+                        .setPositiveButton(getString(R.string.dialog_ok), (dialogInterface, i) -> {
+                            launchActivityUrl(context, R.string.sysserv_api_check_help_link);
+                            finishAffinity();
+                        })
+                        .setCancelable(false)
+                        .show();
+                return;
             }
         }
         new RootRequester(this).execute();
@@ -513,7 +467,7 @@ public class MainActivity extends AppCompatActivity implements
                 launchInternalActivity(this, ShowcaseActivity.class);
                 return true;
             case R.id.rescue:
-                Restore.invoke(context, this);
+                Restore.invoke(this);
                 return true;
 
             // Begin OMS based options
@@ -1126,7 +1080,7 @@ public class MainActivity extends AppCompatActivity implements
                             activity.progressDialog.findViewById(R.id.close_button);
                     appCloseButton.setOnClickListener(v -> System.exit(0)); // Brutally exit!
                     appCloseButton.setVisibility(View.GONE);
-                    if (isSamsungDevice(context)) {
+                    if (isSamsungDevice(context) && !Systems.isNewSamsungDeviceAndromeda(context)) {
                         TextView samsungTitle = activity.progressDialog.findViewById(
                                 R.id.sungstratum_title);
                         Button samsungButton = activity.progressDialog.findViewById(
@@ -1242,7 +1196,8 @@ public class MainActivity extends AppCompatActivity implements
                             e.printStackTrace();
                         }
                     }
-                    return !AndromedaService.checkServerActivity();
+                    return !Systems.isNewSamsungDeviceAndromeda(context) &&
+                            !AndromedaService.checkServerActivity();
                 }
 
                 // Check for Substratum Service
@@ -1302,22 +1257,22 @@ public class MainActivity extends AppCompatActivity implements
                 List<String> stateAll = ThemeManager.listAllOverlays(context);
                 // We need the null check because listOverlays never returns null, but empty
                 if (!state1.isEmpty() && (state1.get(0) != null)) {
-                    for (int i = 0; i < state1.size(); i++) {
+                    for (String aState1 : state1) {
                         Log.e("OverlayCleaner",
-                                "Target APK not found for \"" + state1.get(i) +
+                                "Target APK not found for \"" + aState1 +
                                         "\" and will be removed.");
-                        removeList.add(state1.get(i));
+                        removeList.add(aState1);
                     }
                 }
 
-                for (int i = 0; i < stateAll.size(); i++) {
-                    String parent = Packages.getOverlayParent(context, stateAll.get(i));
+                for (String aStateAll : stateAll) {
+                    String parent = Packages.getOverlayParent(context, aStateAll);
                     if (parent != null) {
                         if (!Packages.isPackageInstalled(context, parent)) {
                             Log.e("OverlayCleaner",
-                                    "Parent APK not found for \"" + stateAll.get(i) +
+                                    "Parent APK not found for \"" + aStateAll +
                                             "\" and will be removed.");
-                            removeList.add(stateAll.get(i));
+                            removeList.add(aStateAll);
                         }
                     }
                 }
