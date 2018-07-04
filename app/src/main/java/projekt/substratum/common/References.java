@@ -205,6 +205,7 @@ public enum References {
     public static final String DATA_RESOURCE_DIR = "/data/resource-cache/";
     public static final String PIXEL_NEXUS_DIR = "/system/overlay/";
     public static final String LEGACY_NEXUS_DIR = "/system/vendor/overlay/";
+    public static final String P_DIR = "/system/app/";
     public static final String VENDOR_DIR = "/vendor/overlay/";
     // Notification Channel
     public static final String DEFAULT_NOTIFICATION_CHANNEL_ID = "default";
@@ -245,7 +246,7 @@ public enum References {
     // Validate with logs
     public static final boolean VALIDATE_WITH_LOGS = false;
     // Control the animation duration
-    public static final int FADE_FROM_GRAYSCALE_TO_COLOR_DURATION = 1250;
+    private static final int FADE_FROM_GRAYSCALE_TO_COLOR_DURATION = 1250;
     // Special permission for Samsung devices
     public static final String SAMSUNG_OVERLAY_PERMISSION =
             "com.samsung.android.permission.SAMSUNG_OVERLAY_COMPONENT";
@@ -297,9 +298,9 @@ public enum References {
                 final ArrayList<String> unarchivedExtra = new ArrayList<>();
                 unarchivedExtra.add(defaultSpinnerText);
                 unarchivedExtra.add(spinnerSetDefaultsText);
-                for (int i = 0; i < archivedSounds.size(); i++) {
-                    unarchivedExtra.add(archivedSounds.get(i).substring(0,
-                            archivedSounds.get(i).length() - (encryptionLevel ? 8 : 4)));
+                for (String archivedSound : archivedSounds) {
+                    unarchivedExtra.add(archivedSound.substring(0,
+                            archivedSound.length() - (encryptionLevel ? 8 : 4)));
                 }
 
                 assert activity != null;
@@ -705,8 +706,8 @@ public enum References {
      * @param context Context
      * @return Returns the signature as an int
      */
-    static int hashPassthrough(Context context, boolean override) {
-        if (hashValue != 0 && !override) {
+    static int hashPassthrough(Context context) {
+        if (hashValue != 0) {
             return hashValue;
         }
         try {
@@ -934,17 +935,17 @@ public enum References {
         table.addView(titleRow);
         table.addView(columnHeaders);
 
-        for (int i = 0; i < translators.size(); i++) {
+        for (TranslatorParser.Translator translator : translators) {
             TableRow rowLows = new TableRow(context);
 
             TextView contributor = new TextView(context);
-            contributor.setText(translators.get(i).contributorName);
+            contributor.setText(translator.contributorName);
             contributor.setTextSize(size_of_row_text);
             contributor.setTypeface(Typeface.DEFAULT_BOLD);
             contributor.setGravity(Gravity.CENTER_HORIZONTAL);
             contributor.setLayoutParams(equivalentParams);
 
-            String langs = translators.get(i).languages.toString();
+            String langs = translator.languages.toString();
             langs = langs.substring(1, langs.length() - 1);
             TextView languages = new TextView(context);
             languages.setText(langs);
@@ -954,7 +955,7 @@ public enum References {
             languages.setLayoutParams(equivalentParams);
 
             TextView translated = new TextView(context);
-            translated.setText(String.valueOf(translators.get(i).translated_words));
+            translated.setText(String.valueOf(translator.translated_words));
             translated.setTextSize(size_of_row_text);
             translated.setTypeface(Typeface.DEFAULT_BOLD);
             translated.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -979,7 +980,7 @@ public enum References {
      */
     public static class Markdown extends AsyncTask<Void, Void, Void> {
         @SuppressLint("StaticFieldLeak")
-        private Context context;
+        private final Context context;
 
         public Markdown(Context context) {
             super();
@@ -994,7 +995,7 @@ public enum References {
         @Override
         protected Void doInBackground(Void... sUrl) {
             spreadYourWingsAndFly(this.context, false);
-            hashPassthrough(this.context, false);
+            hashPassthrough(this.context);
             return null;
         }
     }

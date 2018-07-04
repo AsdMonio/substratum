@@ -36,9 +36,9 @@ import projekt.substratum.common.References;
 public class TimePickerFragment extends DialogFragment implements
         TimePickerDialog.OnTimeSetListener {
 
-    public static final int FLAG_START_TIME = 1;
-    public static final int FLAG_END_TIME = 2;
-    public static final int FLAG_GET_VALUE = 4;
+    static final int FLAG_START_TIME = 1;
+    static final int FLAG_END_TIME = 2;
+    static final int FLAG_GET_VALUE = 4;
 
     private static int flag;
 

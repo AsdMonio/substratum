@@ -269,6 +269,7 @@ Substratum. \n\nMusisz mieć włączone w Opcjach programistycznych \"Instaluj p
     <string name="dialog_ok">OK</string>
     <string name="dialog_do_not_show_again">Nie pokazuj ponownie</string>
     <string name="dialog_cancel">Anuluj</string>
+    <string name="sysserv_api_check_dialog_title">Sprawdzanie API nie powiodło się</string>
     <string name="clean_dialog_body">Czy chcesz wyczyścić wszystkie nakładki dla tego motywu?</string>
     <string name="disable_dialog_body">Czy chcesz wyłączyć wszystkie nakładki dla tego motywu?</string>
     <string name="enable_dialog_body">Czy chcesz włączyć wszystkie zainstalowane nakładki dla tego motywu?      </string>
@@ -406,6 +407,7 @@ Substratum. \n\nMusisz mieć włączone w Opcjach programistycznych \"Instaluj p
     <string name="profile_failed_info_notification">Dotknij, aby uzyskać więcej informacji</string>
     <string name="profile_compile_progress" formatted="false">Kompilacja %d z %d:\n%s</string>
     <string name="profile_compile_processing">Teraz są przetwarzane zapisane stany twoich nakładek&#8230;</string>
+    <string name="sungstromeda_mode_title">Tryb Sungstromeda</string>
     <string name="theme_debug_mode_title">Pominięcie rezerwy starszej wersji kompilatora</string>
     <string name="theme_debug_mode_summary">To pozwoli na zaprzestanie używania przez aplikację mechanizmu awaryjnego starszego kompilatora, gdy motywy osiągną stan nie do odzyskania.</string>
     <string name="logchar_dialog_title_delete_title">UWAGA</string>

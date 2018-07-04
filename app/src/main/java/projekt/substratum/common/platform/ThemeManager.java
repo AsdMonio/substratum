@@ -40,11 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import projekt.substratum.MainActivity;
@@ -55,6 +51,7 @@ import projekt.substratum.common.Resources;
 import projekt.substratum.common.Systems;
 import projekt.substratum.common.commands.ElevatedCommands;
 import projekt.substratum.common.commands.SamsungOverlayCacher;
+import projekt.substratum.common.commands.FileOperations;
 import projekt.substratum.util.helpers.Root;
 
 import static android.os.Build.VERSION.SDK_INT;
@@ -65,6 +62,7 @@ import static projekt.substratum.common.Packages.isPackageInstalled;
 import static projekt.substratum.common.References.EXTERNAL_STORAGE_SAMSUNG_OVERLAY_CACHE;
 import static projekt.substratum.common.References.INTERFACER_PACKAGE;
 import static projekt.substratum.common.References.LEGACY_NEXUS_DIR;
+import static projekt.substratum.common.References.P_DIR;
 import static projekt.substratum.common.Resources.FRAMEWORK;
 import static projekt.substratum.common.Resources.PIXEL_OVERLAY_PACKAGES;
 import static projekt.substratum.common.Resources.SETTINGS;
@@ -92,7 +90,7 @@ public enum ThemeManager {
      * <p>
      * NOTE: Deprecation at the OMS3 level. We no longer support OMS3 commands.
      */
-    public static final String disableOverlay = "cmd overlay disable";
+    private static final String disableOverlay = "cmd overlay disable";
     // State values of OverlayInfo
     public static final int STATE_MISSING_TARGET = (SDK_INT >= O) ? 0 : 1;
     public static final int STATE_DISABLED = (SDK_INT >= O) ? 2 : 4;
@@ -360,7 +358,7 @@ public enum ThemeManager {
     private static List<String> listOverlays(Context context,
                                              int overlayState,
                                              int secondaryState) {
-        List<String> list = new ArrayList<>();
+        Set<String> list = new HashSet<>();
         try {
             // Throw certain exceptions intentionally when unsupported device found
             boolean substratumService = checkSubstratumService(context);
@@ -584,7 +582,7 @@ public enum ThemeManager {
             }
         }
         list.removeAll(Arrays.asList(PIXEL_OVERLAY_PACKAGES));
-        return list;
+        return new ArrayList<>(list);
     }
 
     /**
@@ -597,8 +595,8 @@ public enum ThemeManager {
     public static boolean isOverlay(Context context,
                                     String packageName) {
         List<String> overlays = listAllOverlays(context);
-        for (int i = 0; i < overlays.size(); i++) {
-            if (overlays.get(i).equals(packageName)) {
+        for (String overlay : overlays) {
+            if (overlay.equals(packageName)) {
                 return true;
             }
         }
@@ -616,9 +614,9 @@ public enum ThemeManager {
                                                    String packageName) {
         List<String> list = new ArrayList<>();
         List<String> overlays = listAllOverlays(context);
-        for (int i = 0; i < overlays.size(); i++) {
-            if (getOverlayParent(context, overlays.get(i)).equals(packageName)) {
-                list.add(overlays.get(i));
+        for (String overlay : overlays) {
+            if (getOverlayParent(context, overlay).equals(packageName)) {
+                list.add(overlay);
             }
         }
         return list;
@@ -735,6 +733,15 @@ public enum ThemeManager {
             shouldRestartUi = shouldRestartUI(context, temp);
         }
 
+        if (Systems.checkP()) {
+            FileOperations.mountRW();
+            for (String overlay : overlays) {
+                FileOperations.bruteforceDelete(P_DIR + '_' + overlay + ".apk");
+            }
+            FileOperations.mountRO();
+            return;
+        }
+
         // if enabled list is not contains any overlays
         if (checkSubstratumService(context)) {
             SubstratumService.uninstallOverlay(overlays, shouldRestartUi);
@@ -759,8 +766,8 @@ public enum ThemeManager {
                 (Systems.isSamsungDevice(context) &&
                         !Root.checkRootAccess() &&
                         !Root.requestRootAccess())) {
-            for (int i = 0; i < overlays.size(); i++) {
-                Uri packageURI = Uri.parse("package:" + overlays.get(i));
+            for (String overlay : overlays) {
+                Uri packageURI = Uri.parse("package:" + overlay);
                 Intent uninstallIntent = new Intent(Intent.ACTION_DELETE, packageURI);
                 context.startActivity(uninstallIntent);
             }

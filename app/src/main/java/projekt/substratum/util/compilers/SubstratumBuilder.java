@@ -57,6 +57,7 @@ import static projekt.substratum.common.References.ENABLE_DIRECT_ASSETS_LOGGING;
 import static projekt.substratum.common.References.EXTERNAL_STORAGE_CACHE;
 import static projekt.substratum.common.References.LEGACY_NEXUS_DIR;
 import static projekt.substratum.common.References.PIXEL_NEXUS_DIR;
+import static projekt.substratum.common.References.P_DIR;
 import static projekt.substratum.common.References.SUBSTRATUM_BUILDER;
 import static projekt.substratum.common.References.SUBSTRATUM_BUILDER_CACHE;
 import static projekt.substratum.common.References.VENDOR_DIR;
@@ -215,7 +216,7 @@ public class SubstratumBuilder {
                         )))) {
                     legacyPriority = Integer.parseInt(reader.readLine());
                 } catch (IOException ignored) {
-                    dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                    dumpErrorLogs(overlayPackage,
                             "There was an error parsing priority file!");
                     legacyPriority =
                             prefs.getInt("legacy_overlay_priority", References.DEFAULT_PRIORITY);
@@ -316,11 +317,11 @@ public class SubstratumBuilder {
                         }
                     }
             } catch (Exception e) {
-                dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage, e.getMessage());
-                dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                dumpErrorLogs(overlayPackage, e.getMessage());
+                dumpErrorLogs(overlayPackage,
                         "There was an exception creating a new Manifest file!");
                 hasErroredOut = true;
-                dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                dumpErrorLogs(overlayPackage,
                         "Installation of \"" + overlayPackage + "\" has failed.");
             }
         }
@@ -374,18 +375,18 @@ public class SubstratumBuilder {
                 if (alignedAPK.isFile()) {
                     Log.d(References.SUBSTRATUM_BUILDER, "Zipalign successful!");
                 } else {
-                    dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                    dumpErrorLogs(overlayPackage,
                             "Zipalign has failed!");
                     hasErroredOut = true;
-                    dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                    dumpErrorLogs(overlayPackage,
                             "Zipalign of \"" + overlayPackage + "\" has failed.");
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                dumpErrorLogs(overlayPackage,
                         "Unfortunately, there was an exception trying to zipalign a new APK");
                 hasErroredOut = true;
-                dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                dumpErrorLogs(overlayPackage,
                         "Installation of \"" + overlayPackage + "\" has failed.");
             } finally {
                 if (nativeApp != null) {
@@ -398,11 +399,11 @@ public class SubstratumBuilder {
         String overlayName = (variant == null) ?
                 (overlayPackage + '.' + parse2ThemeName) :
                 (overlayPackage + '.' + parse2ThemeName + parse2VariantName + parse2BaseName);
+        String signedOverlayAPKPath = EXTERNAL_STORAGE_CACHE + overlayName + "-signed.apk";
         if (!hasErroredOut) {
             try {
                 // Delete the previous APK if it exists in the dashboard folder
-                FileOperations.delete(context,
-                        EXTERNAL_STORAGE_CACHE + overlayName + "-signed.apk");
+                FileOperations.delete(context, signedOverlayAPKPath);
 
                 // Sign with the built-in test key/certificate.
                 String source = workArea + '/' + overlayPackage + '.' + parse2ThemeName +
@@ -427,12 +428,10 @@ public class SubstratumBuilder {
                 List<ApkSigner.SignerConfig> signerConfigs = new ArrayList<>();
                 signerConfigs.add(signerConfig);
                 ApkSigner.Builder apkSigner = new ApkSigner.Builder(signerConfigs);
-                String destination = EXTERNAL_STORAGE_CACHE + overlayName + "-signed.apk";
-                apkSigner
-                        .setV1SigningEnabled(false)
+                apkSigner.setV1SigningEnabled(false)
                         .setV2SigningEnabled(true)
                         .setInputApk(new File(source))
-                        .setOutputApk(new File(destination))
+                        .setOutputApk(new File(signedOverlayAPKPath))
                         .setMinSdkVersion(Build.VERSION.SDK_INT)
                         .build()
                         .sign();
@@ -440,10 +439,10 @@ public class SubstratumBuilder {
                 Log.d(References.SUBSTRATUM_BUILDER, "APK successfully signed!");
             } catch (Throwable t) {
                 t.printStackTrace();
-                dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                dumpErrorLogs(overlayPackage,
                         "APK could not be signed. " + t.toString());
                 hasErroredOut = true;
-                dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                dumpErrorLogs(overlayPackage,
                         "Installation of \"" + overlayPackage + "\" has failed.");
             }
         }
@@ -451,81 +450,90 @@ public class SubstratumBuilder {
         // 9. Install the APK silently
         // Superuser needed as this requires elevated privileges to run these commands
         if (!hasErroredOut) {
-            if (themeOms && !Systems.isNewSamsungDeviceAndromeda(context)) {
-                specialSnowflake = false;
-                if (Resources.FRAMEWORK.equals(overlayPackage) ||
-                        "projekt.substratum".equals(overlayPackage)) {
-                    specialSnowflake = ThemeManager.isOverlayEnabled(context, overlayName) ||
-                            (Systems.checkOreo() && !overlayUpdater);
-                }
-
-                if (!specialSnowflake) {
-                    try {
-                        ThemeManager.installOverlay(context, EXTERNAL_STORAGE_CACHE +
-                                overlayName + "-signed.apk");
-                        Log.d(References.SUBSTRATUM_BUILDER, "Silently installing APK...");
-                    } catch (Exception e) {
-                        dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
-                                "Overlay APK has failed to install! \" (Exception) " +
-                                        "[Error: " + e.getMessage() + ']');
-                        hasErroredOut = true;
-                        dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
-                                "Installation of \"" + overlayPackage + "\" has failed.");
-                    }
-                } else {
-                    Log.d(References.SUBSTRATUM_BUILDER,
-                            "Returning compiled APK path for later installation...");
-                    noInstall = EXTERNAL_STORAGE_CACHE + overlayName + "-signed.apk";
-                }
-            } else {
-                boolean isSamsung = Systems.isSamsungDevice(context);
-                if (isSamsung) {
-                    // Take account for Samsung's package manager installation mode
-                    Log.d(References.SUBSTRATUM_BUILDER,
-                            "Requesting PackageManager to launch signed overlay APK for " +
-                                    "Samsung environment...");
-                    noInstall = EXTERNAL_STORAGE_CACHE + overlayName + "-signed.apk";
-                } else {
-                    // At this point, it is detected to be legacy mode and Substratum will push to
-                    // vendor/overlays directly.
-
+            if (themeOms) {
+                if (Systems.checkP()) {
+                    // Brute force install APKs because thanks Google
                     FileOperations.mountRW();
-                    // For Non-Nexus devices
-                    if (!Resources.inNexusFilter()) {
-                        String vendorLocation = LEGACY_NEXUS_DIR;
-                        FileOperations.createNewFolder(vendorLocation);
-                        FileOperations.move(context, EXTERNAL_STORAGE_CACHE + overlayName +
-                                "-signed.apk", vendorLocation + overlayName + ".apk");
-                        FileOperations.setPermissionsRecursively(644, vendorLocation);
-                        FileOperations.setPermissions(755, vendorLocation);
-                        FileOperations.setSystemFileContext(vendorLocation);
-                    } else {
-                        // For Nexus devices
-                        FileOperations.mountRWVendor();
-                        String vendorSymlink = PIXEL_NEXUS_DIR;
-                        FileOperations.createNewFolder(vendorSymlink);
-                        String vendorPartition = VENDOR_DIR;
-                        FileOperations.createNewFolder(vendorPartition);
-                        // On nexus devices, put framework overlay to /vendor/overlay/
-                        if ("android".equals(overlayPackage)) {
-                            String androidOverlay = vendorPartition + overlayName + ".apk";
-                            FileOperations.move(context, EXTERNAL_STORAGE_CACHE + overlayName +
-                                    "-signed.apk", androidOverlay);
-                        } else {
-                            String overlay = vendorSymlink + overlayName + ".apk";
-                            FileOperations.move(context, EXTERNAL_STORAGE_CACHE + overlayName +
-                                    "-signed.apk", overlay);
-                            FileOperations.symlink(overlay, vendorPartition);
-                        }
-                        FileOperations.setPermissionsRecursively(644, vendorSymlink);
-                        FileOperations.setPermissionsRecursively(644, vendorPartition);
-                        FileOperations.setPermissions(755, vendorSymlink);
-                        FileOperations.setPermissions(755, vendorPartition);
-                        FileOperations.setSystemFileContext(vendorSymlink);
-                        FileOperations.setSystemFileContext(vendorPartition);
-                        FileOperations.mountROVendor();
-                    }
+                    final String overlay = P_DIR + "_" + overlayName + ".apk";
+                    FileOperations.move(context, signedOverlayAPKPath, overlay);
+                    FileOperations.setPermissions(644, overlay);
                     FileOperations.mountRO();
+                } else if (!Systems.isNewSamsungDeviceAndromeda(context)) {
+                    specialSnowflake = false;
+                    if (Resources.FRAMEWORK.equals(overlayPackage) ||
+                            "projekt.substratum".equals(overlayPackage)) {
+                        specialSnowflake = ThemeManager.isOverlayEnabled(context, overlayName) ||
+                                (Systems.checkOreo() && !overlayUpdater);
+                    }
+
+                    if (!specialSnowflake) {
+                        try {
+                            ThemeManager.installOverlay(context, EXTERNAL_STORAGE_CACHE +
+                                    overlayName + "-signed.apk");
+                            Log.d(References.SUBSTRATUM_BUILDER, "Silently installing APK...");
+                        } catch (Exception e) {
+                            dumpErrorLogs(overlayPackage,
+                                    "Overlay APK has failed to install! \" (Exception) " +
+                                            "[Error: " + e.getMessage() + ']');
+                            hasErroredOut = true;
+                            dumpErrorLogs(overlayPackage,
+                                    "Installation of \"" + overlayPackage + "\" has failed.");
+                        }
+                    } else {
+                        Log.d(References.SUBSTRATUM_BUILDER,
+                                "Returning compiled APK path for later installation...");
+                        noInstall = EXTERNAL_STORAGE_CACHE + overlayName + "-signed.apk";
+                    }
+                } else {
+                    boolean isSamsung = Systems.isSamsungDevice(context);
+                    if (isSamsung) {
+                        // Take account for Samsung's package manager installation mode
+                        Log.d(References.SUBSTRATUM_BUILDER,
+                                "Requesting PackageManager to launch signed overlay APK for " +
+                                        "Samsung environment...");
+                        noInstall = EXTERNAL_STORAGE_CACHE + overlayName + "-signed.apk";
+                    } else {
+                        // At this point, it is detected to be legacy mode and Substratum will push to
+                        // vendor/overlays directly.
+
+                        FileOperations.mountRW();
+                        // For Non-Nexus devices
+                        if (!Resources.inNexusFilter()) {
+                            String vendorLocation = LEGACY_NEXUS_DIR;
+                            FileOperations.createNewFolder(vendorLocation);
+                            FileOperations.move(context, EXTERNAL_STORAGE_CACHE + overlayName +
+                                    "-signed.apk", vendorLocation + overlayName + ".apk");
+                            FileOperations.setPermissionsRecursively(644, vendorLocation);
+                            FileOperations.setPermissions(755, vendorLocation);
+                            FileOperations.setSystemFileContext(vendorLocation);
+                        } else {
+                            // For Nexus devices
+                            FileOperations.mountRWVendor();
+                            String vendorSymlink = PIXEL_NEXUS_DIR;
+                            FileOperations.createNewFolder(vendorSymlink);
+                            String vendorPartition = VENDOR_DIR;
+                            FileOperations.createNewFolder(vendorPartition);
+                            // On nexus devices, put framework overlay to /vendor/overlay/
+                            if ("android".equals(overlayPackage)) {
+                                String androidOverlay = vendorPartition + overlayName + ".apk";
+                                FileOperations.move(context, EXTERNAL_STORAGE_CACHE + overlayName +
+                                        "-signed.apk", androidOverlay);
+                            } else {
+                                String overlay = vendorSymlink + overlayName + ".apk";
+                                FileOperations.move(context, EXTERNAL_STORAGE_CACHE + overlayName +
+                                        "-signed.apk", overlay);
+                                FileOperations.symlink(overlay, vendorPartition);
+                            }
+                            FileOperations.setPermissionsRecursively(644, vendorSymlink);
+                            FileOperations.setPermissionsRecursively(644, vendorPartition);
+                            FileOperations.setPermissions(755, vendorSymlink);
+                            FileOperations.setPermissions(755, vendorPartition);
+                            FileOperations.setSystemFileContext(vendorSymlink);
+                            FileOperations.setSystemFileContext(vendorPartition);
+                            FileOperations.mountROVendor();
+                        }
+                        FileOperations.mountRO();
+                    }
                 }
             }
         }
@@ -587,7 +595,7 @@ public class SubstratumBuilder {
                                     overlayPackage, additionalVariant, assetReplacement,
                                     true, context, noCacheDir);
                         } else {
-                            dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                            dumpErrorLogs(overlayPackage,
                                     line);
                             errored = true;
                         }
@@ -595,7 +603,7 @@ public class SubstratumBuilder {
                 }
                 if (errored) {
                     hasErroredOut = true;
-                    dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                    dumpErrorLogs(overlayPackage,
                             "Installation of \"" + overlayPackage + "\" has failed.");
                 } else {
                     // We need this Process to be waited for before moving on to the next function.
@@ -607,10 +615,10 @@ public class SubstratumBuilder {
                         Log.d(References.SUBSTRATUM_BUILDER, "Overlay APK creation has completed!");
                         return true;
                     } else {
-                        dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                        dumpErrorLogs(overlayPackage,
                                 "Overlay APK creation has failed!");
                         hasErroredOut = true;
-                        dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+                        dumpErrorLogs(overlayPackage,
                                 "Installation of \"" + overlayPackage + "\" has failed.");
                     }
                 }
@@ -626,10 +634,10 @@ public class SubstratumBuilder {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+            dumpErrorLogs(overlayPackage,
                     "Unfortunately, there was an exception trying to create a new APK");
             hasErroredOut = true;
-            dumpErrorLogs(References.SUBSTRATUM_BUILDER, overlayPackage,
+            dumpErrorLogs(overlayPackage,
                     "Installation of \"" + overlayPackage + "\" has failed.");
         } finally {
             if (nativeApp != null) {
@@ -641,14 +649,12 @@ public class SubstratumBuilder {
 
     /**
      * Save a series of error logs to be callable
-     *
-     * @param tag     Internal logcat tag
-     * @param overlay Overlay that has failed to compile
+     *  @param overlay Overlay that has failed to compile
      * @param message Failure message
      */
-    private void dumpErrorLogs(String tag, String overlay, String message) {
+    private void dumpErrorLogs(String overlay, String message) {
         if (!message.isEmpty()) {
-            Log.e(tag, message);
+            Log.e(References.SUBSTRATUM_BUILDER, message);
             if (errorLogs.isEmpty()) {
                 errorLogs = "» [" + overlay + "]: " + message;
             } else {

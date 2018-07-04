@@ -40,6 +40,7 @@ import org.apache.commons.io.IOUtils;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -132,12 +133,13 @@ public enum Packages {
      * @param enabled     Check whether it is enabled or frozen
      * @return True, if it fits all criteria above
      */
-    public static boolean isPackageInstalled(Context context,
-                                             String packageName,
-                                             boolean enabled) {
+    private static boolean isPackageInstalled(Context context,
+                                              String packageName,
+                                              boolean enabled) {
         try {
             PackageManager pm = context.getPackageManager();
             ApplicationInfo ai = pm.getApplicationInfo(packageName, 0);
+            if (!new File(ai.sourceDir).exists()) return false;
             pm.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES);
             if (enabled) return ai.enabled;
             // if package doesn't exist, an Exception will be thrown, so return true in every case
@@ -359,8 +361,8 @@ public enum Packages {
     public static Collection<String> getThemesArray(Context context) {
         Collection<String> returnArray = new ArrayList<>();
         List<ResolveInfo> themesResolveInfo = getThemes(context);
-        for (int i = 0; i < themesResolveInfo.size(); i++) {
-            returnArray.add(themesResolveInfo.get(i).activityInfo.packageName);
+        for (ResolveInfo themeResolveInfo : themesResolveInfo) {
+            returnArray.add(themeResolveInfo.activityInfo.packageName);
         }
         return returnArray;
     }

@@ -47,11 +47,10 @@ import static projekt.substratum.common.Systems.isSamsungDevice;
 public class OverlaysAdapter extends RecyclerView.Adapter<OverlaysAdapter.ViewHolder> {
 
     private static final String INSTALLED_ENABLED = "INSTALLED_ENABLED";
-    private static final String INSTALLED_ELSEWHERE = "INSTALLED_ELSEWHERE";
     private static final String INSTALLED_UNKNOWN = "INSTALLED_UNKNOWN";
     private static final String INSTALLED_DISABLED = "INSTALLED_DISABLED";
     private static final String NOT_INSTALLED = "NOT_INSTALLED";
-    private List<OverlaysItem> overlayList;
+    private final List<OverlaysItem> overlayList;
     private List<String> overlayStateList;
 
     public OverlaysAdapter(List<OverlaysItem> overlayInfo, Context context) {
@@ -95,20 +94,10 @@ public class OverlaysAdapter extends RecyclerView.Adapter<OverlaysAdapter.ViewHo
                 }
             } else {
                 if (overlaysItem.getColorState() == 0) {
-                    List<String> installedElsewhere =
-                            ThemeManager.listEnabledOverlaysForTarget(
-                                    context, overlaysItem.getPackageName());
-                    if (installedElsewhere.size() > 0) {
-                        overlaysItem.setColorState(
-                                context.getColor(R.color.overlay_not_enabled_elsewhere_list_entry));
-                        changeOverlayTargetPackageNameTint(
-                                viewBinding, context, INSTALLED_ELSEWHERE);
-                    } else {
-                        overlaysItem.setColorState(
-                                context.getColor(R.color.overlay_not_installed_list_entry));
-                        changeOverlayTargetPackageNameTint(
-                                viewBinding, context, NOT_INSTALLED);
-                    }
+                    overlaysItem.setColorState(
+                            context.getColor(R.color.overlay_not_installed_list_entry));
+                    changeOverlayTargetPackageNameTint(
+                            viewBinding, context, NOT_INSTALLED);
                 } else {
                     changeOverlayTargetPackageNameTint(
                             viewBinding, context, String.valueOf(overlaysItem.getColorState()));
@@ -200,10 +189,6 @@ public class OverlaysAdapter extends RecyclerView.Adapter<OverlaysAdapter.ViewHo
                 binding.overlayTargetPackageName.setTextColor(
                         context.getColor(R.color.overlay_installed_not_active));
                 break;
-            case INSTALLED_ELSEWHERE:
-                binding.overlayTargetPackageName.setTextColor(
-                        context.getColor(R.color.overlay_not_enabled_elsewhere_list_entry));
-                break;
             case NOT_INSTALLED:
                 binding.overlayTargetPackageName.setTextColor(
                         context.getColor(R.color.overlay_not_installed_list_entry));
@@ -266,7 +251,7 @@ public class OverlaysAdapter extends RecyclerView.Adapter<OverlaysAdapter.ViewHo
                                                                       int spinnerNumber) {
         return new AdapterView.OnItemSelectedListener() {
 
-            TabOverlaysItemBinding viewHolderBinding = viewHolder.getBinding();
+            final TabOverlaysItemBinding viewHolderBinding = viewHolder.getBinding();
 
             String setPackageName(String packageName, AdapterView<?> arg0) {
                 return packageName + arg0.getSelectedItem().toString()
@@ -472,7 +457,7 @@ public class OverlaysAdapter extends RecyclerView.Adapter<OverlaysAdapter.ViewHo
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TabOverlaysItemBinding binding;
+        final TabOverlaysItemBinding binding;
 
         ViewHolder(View itemLayoutView) {
             super(itemLayoutView);

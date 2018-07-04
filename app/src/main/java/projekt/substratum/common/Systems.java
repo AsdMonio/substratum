@@ -77,7 +77,7 @@ public enum Systems {
      * Cached boolean to find if system
      * passes all cases of Samsung checks
      */
-    public static Boolean isSamsungDevice = null;
+    private static Boolean isSamsungDevice = null;
     static Boolean checkPackageSupported;
 
     /**
@@ -114,7 +114,7 @@ public enum Systems {
      * @param context Context!
      * @return A string object of the obtained setting
      */
-    public static String getForceAuthorizationSetting(Context context) {
+    private static String getForceAuthorizationSetting(Context context) {
         String forceAuthorize = Settings.Secure.getString(context.getContentResolver(),
                 "force_authorize_substratum_packages");
         return forceAuthorize == null ? "0" : forceAuthorize;
@@ -196,6 +196,15 @@ public enum Systems {
             }
         }
         return NO_THEME_ENGINE;
+    }
+
+    /**
+     * Check if the device is P based
+     *
+     * @return True, if yes.
+     */
+    public static Boolean checkP() {
+        return (Build.VERSION.SDK_INT == Build.VERSION_CODES.P);
     }
 
     /**
