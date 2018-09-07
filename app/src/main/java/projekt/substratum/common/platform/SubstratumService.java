@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common.platform;
@@ -22,16 +11,17 @@ import android.content.substratum.ISubstratumService;
 import android.os.Process;
 import android.os.RemoteException;
 import android.util.Log;
+import projekt.substratum.common.Systems;
+import projekt.substratum.platform.SubstratumServiceBridge;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import projekt.substratum.platform.SubstratumServiceBridge;
+public class SubstratumService {
 
-public enum SubstratumService {
-    ;
     private static final String TAG = "SubstratumService";
     private static final String[] EXPECTED_METHODS = {
             "installOverlay",
@@ -49,6 +39,7 @@ public enum SubstratumService {
             "applyShutdownAnimation",
             "getAllOverlays"
     };
+    private static final ArrayList<String> expectedMethods = new ArrayList<>(Arrays.asList(EXPECTED_METHODS));
     private static final int uid = Process.myUid() / 100000;
     private static final ISubstratumService service = SubstratumServiceBridge.get();
 
@@ -74,6 +65,15 @@ public enum SubstratumService {
         } catch (RemoteException e) {
             Log.e(TAG, "There was an exception when trying to get all overlay", e);
             return null;
+        }
+    }
+
+    public static boolean setEnabled(String packageName, boolean enable, int userId) {
+        try {
+            return service.setEnabled(packageName, enable, userId);
+        } catch (RemoteException e) {
+            Log.e(TAG, "There was an error enabling overlays", e);
+            return false;
         }
     }
 
@@ -208,8 +208,10 @@ public enum SubstratumService {
 
     public static boolean checkApi() {
         try {
-            Method[] methods = ISubstratumService.class.getMethods();
-            for (String expectedMethod : EXPECTED_METHODS) {
+            final Method[] methods = ISubstratumService.class.getMethods();
+            if (Systems.IS_PIE)
+                expectedMethods.add("setEnabled");
+            for (String expectedMethod : expectedMethods) {
                 boolean methodFound = false;
                 for (Method method : methods) {
                     if (expectedMethod.equals(method.getName())) {

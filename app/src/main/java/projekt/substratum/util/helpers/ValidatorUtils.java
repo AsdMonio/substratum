@@ -1,20 +1,22 @@
+/*
+ * Copyright (c) 2016-2018 Projekt Substratum
+ * This file is part of Substratum.
+ *
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
+ */
+
 package projekt.substratum.util.helpers;
 
 import android.app.Dialog;
 import android.os.AsyncTask;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import projekt.substratum.R;
+import projekt.substratum.Substratum;
 import projekt.substratum.adapters.fragments.settings.Repository;
 import projekt.substratum.adapters.fragments.settings.ValidatorAdapter;
 import projekt.substratum.adapters.fragments.settings.ValidatorError;
@@ -27,6 +29,11 @@ import projekt.substratum.fragments.SettingsFragment;
 import projekt.substratum.util.readers.ReadFilterFile;
 import projekt.substratum.util.readers.ReadRepositoriesFile;
 import projekt.substratum.util.readers.ReadResourcesFile;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 import static projekt.substratum.common.Internal.VALIDATOR_CACHE;
 import static projekt.substratum.common.Internal.VALIDATOR_CACHE_DIR;
@@ -189,13 +196,13 @@ public class ValidatorUtils {
             if (settingsFragment != null) {
                 FileDownloader.init(
                         settingsFragment.context,
-                        settingsFragment.getString(Systems.checkOreo() ?
+                        settingsFragment.getString(Systems.IS_OREO ?
                                 R.string.validator_o_url : R.string.validator_n_url),
                         "repository_names.xml", VALIDATOR_CACHE);
 
                 FileDownloader.init(
                         settingsFragment.context,
-                        settingsFragment.getString(Systems.checkOreo() ?
+                        settingsFragment.getString(Systems.IS_OREO ?
                                 R.string.validator_o_whitelist_url :
                                 R.string.validator_n_whitelist_url),
                         "resource_whitelist.xml", VALIDATOR_CACHE);
@@ -243,7 +250,7 @@ public class ValidatorUtils {
                                         "bool");
                                 if (validated) {
                                     if (VALIDATE_WITH_LOGS)
-                                        Log.d("BoolCheck", "Resource exists: " + bool);
+                                        Substratum.log("BoolCheck", "Resource exists: " + bool);
                                 } else {
                                     boolean bypassed = false;
                                     for (ValidatorFilter aWhitelist : whitelist) {
@@ -254,7 +261,7 @@ public class ValidatorUtils {
                                         if (currentPackage.equals(packageName)) {
                                             if (currentWhitelist.contains(bool)) {
                                                 if (VALIDATE_WITH_LOGS)
-                                                    Log.d("BoolCheck",
+                                                    Substratum.log("BoolCheck",
                                                             "Resource bypassed using filter: " +
                                                                     bool);
                                                 bypassed = true;
@@ -292,7 +299,7 @@ public class ValidatorUtils {
                                         "color");
                                 if (validated) {
                                     if (VALIDATE_WITH_LOGS)
-                                        Log.d("ColorCheck", "Resource exists: " + color);
+                                        Substratum.log("ColorCheck", "Resource exists: " + color);
                                 } else {
                                     boolean bypassed = false;
                                     for (ValidatorFilter aWhitelist : whitelist) {
@@ -303,7 +310,7 @@ public class ValidatorUtils {
                                         if (currentPackage.equals(packageName)) {
                                             if (currentWhitelist.contains(color)) {
                                                 if (VALIDATE_WITH_LOGS)
-                                                    Log.d("ColorCheck",
+                                                    Substratum.log("ColorCheck",
                                                             "Resource bypassed using filter: " +
                                                                     color);
                                                 bypassed = true;
@@ -340,7 +347,7 @@ public class ValidatorUtils {
                                         "dimen");
                                 if (validated) {
                                     if (VALIDATE_WITH_LOGS)
-                                        Log.d("DimenCheck", "Resource exists: " + dimen);
+                                        Substratum.log("DimenCheck", "Resource exists: " + dimen);
                                 } else {
                                     boolean bypassed = false;
                                     for (ValidatorFilter aWhitelist : whitelist) {
@@ -351,7 +358,7 @@ public class ValidatorUtils {
                                         if (currentPackage.equals(packageName)) {
                                             if (currentWhitelist.contains(dimen)) {
                                                 if (VALIDATE_WITH_LOGS)
-                                                    Log.d("DimenCheck",
+                                                    Substratum.log("DimenCheck",
                                                             "Resource bypassed using filter: " +
                                                                     dimen);
                                                 bypassed = true;
@@ -390,7 +397,7 @@ public class ValidatorUtils {
                                         "style");
                                 if (validated) {
                                     if (VALIDATE_WITH_LOGS)
-                                        Log.d("StyleCheck", "Resource exists: " + style);
+                                        Substratum.log("StyleCheck", "Resource exists: " + style);
                                 } else {
                                     boolean bypassed = false;
                                     for (ValidatorFilter aWhitelist : whitelist) {
@@ -401,7 +408,7 @@ public class ValidatorUtils {
                                         if (currentPackage.equals(packageName)) {
                                             if (currentWhitelist.contains(style)) {
                                                 if (VALIDATE_WITH_LOGS)
-                                                    Log.d("StyleCheck",
+                                                    Substratum.log("StyleCheck",
                                                             "Resource bypassed using filter: " +
                                                                     style);
                                                 bypassed = true;
@@ -423,7 +430,7 @@ public class ValidatorUtils {
                             }
                         }
                     } else if (VALIDATE_WITH_LOGS)
-                        Log.d(SUBSTRATUM_VALIDATOR,
+                        Substratum.log(SUBSTRATUM_VALIDATOR,
                                 "This device does not come built-in with '" + packageName + "', " +
                                         "skipping resource verification...");
                     if (has_errored) settingsFragment.errors.add(validatorError);

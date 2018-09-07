@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.services.binder;
@@ -25,20 +14,18 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.IBinder;
-import android.support.annotation.Nullable;
-import android.support.v4.app.NotificationCompat;
-import android.util.Log;
-
-import java.util.ArrayList;
-import java.util.Set;
-
+import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 import projekt.andromeda.IAndromedaInterface;
 import projekt.substratum.R;
+import projekt.substratum.Substratum;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Systems;
 import projekt.substratum.common.platform.AndromedaService;
 
-import static android.support.v7.preference.PreferenceManager.getDefaultSharedPreferences;
+import java.util.ArrayList;
+import java.util.Set;
+
 import static projekt.substratum.common.References.ANDROMEDA_BINDED;
 import static projekt.substratum.common.References.ANDROMEDA_PACKAGE;
 
@@ -114,14 +101,14 @@ public class AndromedaBinderService extends Service implements ServiceConnection
                         .setSmallIcon(R.drawable.notification_icon);
                 startForeground(2018, builder.build());
 
-                SharedPreferences prefs = getDefaultSharedPreferences(getApplicationContext());
+                SharedPreferences prefs = Substratum.getPreferences();
                 Set<String> overlays = prefs.getStringSet("to_be_disabled_overlays", null);
                 if (overlays != null) {
                     AndromedaService.disableOverlays(new ArrayList<>(overlays));
                     prefs.edit().remove("to_be_disabled_overlays").apply();
                 }
 
-                Log.d(TAG, "Substratum has successfully binded with the Andromeda module.");
+                Substratum.log(TAG, "Substratum has successfully binded with the Andromeda module.");
             } else {
                 stopSelf();
             }
@@ -135,7 +122,7 @@ public class AndromedaBinderService extends Service implements ServiceConnection
         super.onDestroy();
         iAndromedaInterface = null;
         bound = false;
-        Log.d(TAG, "Substratum has successfully unbinded with the Andromeda module.");
+        Substratum.log(TAG, "Substratum has successfully unbinded with the Andromeda module.");
 
     }
 

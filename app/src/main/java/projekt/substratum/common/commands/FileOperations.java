@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common.commands;
@@ -22,13 +11,18 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Build;
 import android.os.Environment;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
 import android.util.Log;
-
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import org.apache.commons.io.FileUtils;
+import projekt.substratum.Substratum;
+import projekt.substratum.common.platform.SubstratumService;
+import projekt.substratum.common.platform.ThemeInterfacerService;
+import projekt.substratum.util.helpers.Root;
 
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -38,13 +32,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 
-import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
-
-import projekt.substratum.common.platform.SubstratumService;
-import projekt.substratum.common.platform.ThemeInterfacerService;
-import projekt.substratum.util.helpers.Root;
-
 import static projekt.substratum.common.Internal.BYTE_ACCESS_RATE;
 import static projekt.substratum.common.Internal.ENCRYPTED_FILE_EXTENSION;
 import static projekt.substratum.common.References.ENABLE_DIRECT_ASSETS_LOGGING;
@@ -52,8 +39,7 @@ import static projekt.substratum.common.Systems.checkSubstratumService;
 import static projekt.substratum.common.Systems.checkThemeInterfacer;
 
 @SuppressWarnings("ResultOfMethodCallIgnored")
-public enum FileOperations {
-    ;
+public class FileOperations {
 
     public static final String DA_LOG = "DirectAssets";
     private static final String COPY_LOG = "SubstratumCopy";
@@ -206,16 +192,16 @@ public enum FileOperations {
      * @param foldername Folder name
      */
     public static void createNewFolder(final String foldername) {
-        Log.d(CREATE_LOG, "Using rootless operation to create " + foldername);
+        Substratum.log(CREATE_LOG, "Using rootless operation to create " + foldername);
         final File folder = new File(foldername);
         if (!folder.exists()) {
-            Log.d(CREATE_LOG, "Operation " + (folder.mkdirs() ? "succeeded" : "failed"));
+            Substratum.log(CREATE_LOG, "Operation " + (folder.mkdirs() ? "succeeded" : "failed"));
             if (!folder.exists()) {
-                Log.d(CREATE_LOG, "Using rooted operation to create " + foldername);
+                Substratum.log(CREATE_LOG, "Using rooted operation to create " + foldername);
                 Root.runCommand("mkdir " + foldername);
             }
         } else {
-            Log.d("SubstratumCreate", "Folder already exists!");
+            Substratum.log("SubstratumCreate", "Folder already exists!");
         }
     }
 
@@ -235,11 +221,11 @@ public enum FileOperations {
                 !source.startsWith("/system")) || (!destination.startsWith(dataDir) &&
                 !destination.startsWith(externalDir) && !destination.startsWith("/system"));
         if (checkSubstratumService(context) && needRoot) {
-            Log.d(COPY_LOG,
+            Substratum.log(COPY_LOG,
                     "Using substratum service operation to copy " + source + " to " + destination);
             SubstratumService.copy(source, destination);
         } else if (checkThemeInterfacer(context) && needRoot) {
-            Log.d(COPY_LOG,
+            Substratum.log(COPY_LOG,
                     "Using theme interface operation to copy " + source + " to " + destination);
             ThemeInterfacerService.copy(source, destination);
 
@@ -251,8 +237,8 @@ public enum FileOperations {
                     Thread.sleep(1000L);
                     retryCount++;
                 }
-                if (retryCount == 5) Log.d(COPY_LOG, "Operation timed out!");
-                Log.d(COPY_LOG, "Operation " + (file.exists() ? "succeeded" : "failed"));
+                if (retryCount == 5) Substratum.log(COPY_LOG, "Operation timed out!");
+                Substratum.log(COPY_LOG, "Operation " + (file.exists() ? "succeeded" : "failed"));
             } catch (final InterruptedException e) {
                 Thread.interrupted();
             }
@@ -269,20 +255,27 @@ public enum FileOperations {
      */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     private static void copy(final String source, final String destination) {
-        Log.d(COPY_LOG,
-                "Using rootless operation to copy " + source + " to " + destination);
         final File out = new File(destination);
+
+        if (destination.startsWith("/system")) {
+            Root.runCommand("cp -f " + source + ' ' + destination);
+            Substratum.log(COPY_LOG, "Operation " + (out.exists() ? "succeeded" : "failed"));
+            return;
+        }
+
+        Substratum.log(COPY_LOG,
+                "Using rootless operation to copy " + source + " to " + destination);
         try {
             final File in = new File(source);
             FileUtils.copyFile(in, out);
         } catch (final IOException ignored) {
         }
         if (!out.exists()) {
-            Log.d(COPY_LOG,
+            Substratum.log(COPY_LOG,
                     "Rootless operation failed, falling back to rooted mode...");
             Root.runCommand("cp -f " + source + ' ' + destination);
         }
-        Log.d(COPY_LOG, "Operation " + (out.exists() ? "succeeded" : "failed"));
+        Substratum.log(COPY_LOG, "Operation " + (out.exists() ? "succeeded" : "failed"));
     }
 
     /**
@@ -316,7 +309,7 @@ public enum FileOperations {
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     private static void copyDir(final String source,
                                 String destination) {
-        Log.d(COPYDIR_LOG,
+        Substratum.log(COPYDIR_LOG,
                 "Using rootless operation to copy " + source + " to " + destination);
         final File out = new File(destination);
         try {
@@ -325,11 +318,11 @@ public enum FileOperations {
         } catch (final IOException ignored) {
         }
         if (!out.exists()) {
-            Log.d(COPY_LOG,
+            Substratum.log(COPY_LOG,
                     "Rootless operation failed, falling back to rooted mode...");
             Root.runCommand("cp -rf " + source + ' ' + destination);
         }
-        Log.d(COPYDIR_LOG, "Operation " + (out.exists() ? "succeeded" : "failed"));
+        Substratum.log(COPYDIR_LOG, "Operation " + (out.exists() ? "succeeded" : "failed"));
     }
 
     /**
@@ -367,10 +360,10 @@ public enum FileOperations {
                 (externalDir) &&
                 !directory.startsWith("/system"));
         if (checkSubstratumService(context) && needRoot) {
-            Log.d(DELETE_LOG, "Using substratum service operation to delete " + directory);
+            Substratum.log(DELETE_LOG, "Using substratum service operation to delete " + directory);
             SubstratumService.delete(directory, deleteParent);
         } else if (checkThemeInterfacer(context) && needRoot) {
-            Log.d(DELETE_LOG, "Using theme interfacer operation to delete " + directory);
+            Substratum.log(DELETE_LOG, "Using theme interfacer operation to delete " + directory);
             ThemeInterfacerService.delete(directory, deleteParent);
 
             // Wait until delete success
@@ -382,8 +375,8 @@ public enum FileOperations {
                     Thread.sleep(1000L);
                     retryCount++;
                 }
-                if (retryCount == 5) Log.d(DELETE_LOG, "Operation timed out!");
-                Log.d(DELETE_LOG, "Operation " + (!file.exists() ? "succeeded" : "failed"));
+                if (retryCount == 5) Substratum.log(DELETE_LOG, "Operation timed out!");
+                Substratum.log(DELETE_LOG, "Operation " + (!file.exists() ? "succeeded" : "failed"));
             } catch (final InterruptedException e) {
                 Thread.interrupted();
             }
@@ -399,7 +392,7 @@ public enum FileOperations {
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     private static void delete(final String directory,
                                final boolean deleteParent) {
-        Log.d(DELETE_LOG, "Using rootless operation to delete " + directory);
+        Substratum.log(DELETE_LOG, "Using rootless operation to delete " + directory);
         final File dir = new File(directory);
         try {
             if (deleteParent) {
@@ -408,11 +401,11 @@ public enum FileOperations {
                 FileUtils.cleanDirectory(dir);
             }
         } catch (final FileNotFoundException ignored) {
-            Log.d(DELETE_LOG, "File already " + (deleteParent ? "deleted." : "cleaned."));
+            Substratum.log(DELETE_LOG, "File already " + (deleteParent ? "deleted." : "cleaned."));
         } catch (final IOException ignored) {
         }
         if (dir.exists()) {
-            Log.d(DELETE_LOG,
+            Substratum.log(DELETE_LOG,
                     "Rootless operation failed, falling back to rooted mode...");
             if (deleteParent) {
                 Root.runCommand("rm -rf " + directory);
@@ -428,7 +421,7 @@ public enum FileOperations {
                 }
             }
         }
-        Log.d(DELETE_LOG, "Operation " + (!dir.exists() ? "succeeded" : "failed"));
+        Substratum.log(DELETE_LOG, "Operation " + (!dir.exists() ? "succeeded" : "failed"));
     }
 
     /**
@@ -447,11 +440,11 @@ public enum FileOperations {
                 !source.startsWith("/system")) || (!destination.startsWith(dataDir) &&
                 !destination.startsWith(externalDir) && !destination.startsWith("/system"));
         if (checkSubstratumService(context) && needRoot) {
-            Log.d(MOVE_LOG,
+            Substratum.log(MOVE_LOG,
                     "Using substratum service operation to move " + source + " to " + destination);
             SubstratumService.move(source, destination);
         } else if (checkThemeInterfacer(context) && needRoot) {
-            Log.d(MOVE_LOG,
+            Substratum.log(MOVE_LOG,
                     "Using theme interfacer operation to move " + source + " to " + destination);
             ThemeInterfacerService.move(source, destination);
 
@@ -463,8 +456,8 @@ public enum FileOperations {
                     Thread.sleep(1000L);
                     retryCount++;
                 }
-                if (retryCount == 5) Log.d(MOVE_LOG, "Operation timed out");
-                Log.d(MOVE_LOG, "Operation " + (file.exists() ? "succeeded" : "failed"));
+                if (retryCount == 5) Substratum.log(MOVE_LOG, "Operation timed out");
+                Substratum.log(MOVE_LOG, "Operation " + (file.exists() ? "succeeded" : "failed"));
             } catch (final InterruptedException e) {
                 Thread.interrupted();
             }
@@ -481,9 +474,16 @@ public enum FileOperations {
      */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     private static void move(final String source, final String destination) {
-        Log.d(MOVE_LOG, "Using rootless operation to move " + source + " to " +
-                destination);
         final File out = new File(destination);
+
+        if (destination.startsWith("/system")) {
+            Root.runCommand("cp -f " + source + ' ' + destination);
+            Substratum.log(COPY_LOG, "Operation " + (out.exists() ? "succeeded" : "failed"));
+            return;
+        }
+
+        Substratum.log(COPY_LOG,
+                "Using rootless operation to copy " + source + " to " + destination);
         try {
             final File in = new File(source);
             if (in.isFile()) {
@@ -492,11 +492,11 @@ public enum FileOperations {
                 FileUtils.moveDirectory(in, out);
             }
         } catch (final Exception e) {
-            Log.d(MOVE_LOG,
+            Substratum.log(MOVE_LOG,
                     "Rootless operation failed, falling back to rooted mode...");
             Root.runCommand("mv -f " + source + ' ' + destination);
         }
-        Log.d(MOVE_LOG, "Operation " + (out.exists() ? "succeeded" : "failed"));
+        Substratum.log(MOVE_LOG, "Operation " + (out.exists() ? "succeeded" : "failed"));
     }
 
     /**
@@ -537,12 +537,13 @@ public enum FileOperations {
 
     /**
      * DirectAssets Mode Functions
-     *  @param assetManager Take the asset manager context from the theme package
+     *
+     * @param assetManager Take the asset manager context from the theme package
      * @param listDir      The expected list directory inside the assets folder
      * @param destination  Output directory on where we should be caching
      * @param remember     Should be the same as listDir, so we strip out the unnecessary prefix
-*                     so it only extracts to a specified folder without the asset manager's
-*                     list structure.
+     *                     so it only extracts to a specified folder without the asset manager's
+     *                     list structure.
      * @param cipher       Encryption key
      */
     public static void copyFileOrDir(final AssetManager assetManager,
@@ -551,9 +552,9 @@ public enum FileOperations {
                                      final String remember,
                                      final Cipher cipher) {
         if (ENABLE_DIRECT_ASSETS_LOGGING) {
-            Log.d(DA_LOG, "DirectAssets copy function is now running...");
-            Log.d(DA_LOG, "Source: " + listDir);
-            Log.d(DA_LOG, "Destination: " + destination);
+            Substratum.log(DA_LOG, "DirectAssets copy function is now running...");
+            Substratum.log(DA_LOG, "Source: " + listDir);
+            Substratum.log(DA_LOG, "Destination: " + destination);
         }
         // Create a filter that is meant to detect build states of the folder
         String ending = listDir.substring(listDir.length() - 4);
@@ -563,17 +564,17 @@ public enum FileOperations {
             String parsedVersion =
                     Character.toString(ending.charAt(2)) + Character.toString(ending.charAt(3));
             if (ENABLE_DIRECT_ASSETS_LOGGING)
-                Log.d(DA_LOG, "Folder with versioning found: " + parsedVersion);
+                Substratum.log(DA_LOG, "Folder with versioning found: " + parsedVersion);
             Integer parsedVer = Integer.parseInt(parsedVersion);
             if (Build.VERSION.SDK_INT < parsedVer) {
                 if (ENABLE_DIRECT_ASSETS_LOGGING)
-                    Log.d(DA_LOG,
+                    Substratum.log(DA_LOG,
                             "Folder does not need to be copied on non-matching system version: " +
                                     Build.VERSION.SDK_INT + " is smaller than " + parsedVer + ".");
                 return;
             } else {
                 if (ENABLE_DIRECT_ASSETS_LOGGING)
-                    Log.d(DA_LOG,
+                    Substratum.log(DA_LOG,
                             "Folder will be copied on matching system version: " +
                                     Build.VERSION.SDK_INT + " (current) is greater or equals to " +
                                     parsedVer + ".");
@@ -584,11 +585,11 @@ public enum FileOperations {
             if (assets.length == 0) {
                 // When asset[] is empty, it is not iterable, hence it is a file
                 if (ENABLE_DIRECT_ASSETS_LOGGING)
-                    Log.d(DA_LOG, "This is a file object, directly copying...");
-                if (ENABLE_DIRECT_ASSETS_LOGGING) Log.d(DA_LOG, listDir);
+                    Substratum.log(DA_LOG, "This is a file object, directly copying...");
+                if (ENABLE_DIRECT_ASSETS_LOGGING) Substratum.log(DA_LOG, listDir);
                 final boolean copied = copyFile(assetManager, listDir, destination, remember,
                         cipher);
-                if (ENABLE_DIRECT_ASSETS_LOGGING) Log.d(DA_LOG, "File operation status: " +
+                if (ENABLE_DIRECT_ASSETS_LOGGING) Substratum.log(DA_LOG, "File operation status: " +
                         ((copied) ? "Success!" : "Failed"));
             } else {
                 // This will be a folder if the size is greater than 0
@@ -596,8 +597,8 @@ public enum FileOperations {
                         .replaceAll("\\s+", "");
                 final File dir = new File(fullPath);
                 if (!dir.exists()) {
-                    Log.d(DA_LOG, "Attempting to copy: " + dir.getAbsolutePath() + '/');
-                    Log.d(DA_LOG, "File operation status: " +
+                    Substratum.log(DA_LOG, "Attempting to copy: " + dir.getAbsolutePath() + '/');
+                    Substratum.log(DA_LOG, "File operation status: " +
                             ((dir.mkdir()) ? "Success!" : "Failed"));
                 }
                 for (final String asset : assets) {

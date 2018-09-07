@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.tabs;
@@ -32,24 +21,11 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
-import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.service.notification.StatusBarNotification;
-import android.support.annotation.NonNull;
-import android.support.annotation.RestrictTo;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.FileProvider;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.util.Pair;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -62,7 +38,41 @@ import android.widget.SpinnerAdapter;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
+import androidx.annotation.RestrictTo;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.FileProvider;
+import androidx.core.util.Pair;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import com.google.android.material.snackbar.Snackbar;
+import projekt.substratum.BuildConfig;
+import projekt.substratum.InformationActivity;
+import projekt.substratum.R;
+import projekt.substratum.Substratum;
+import projekt.substratum.adapters.tabs.overlays.OverlaysAdapter;
+import projekt.substratum.adapters.tabs.overlays.OverlaysItem;
+import projekt.substratum.adapters.tabs.overlays.VariantAdapter;
+import projekt.substratum.adapters.tabs.overlays.VariantItem;
+import projekt.substratum.common.Internal;
+import projekt.substratum.common.Packages;
+import projekt.substratum.common.References;
+import projekt.substratum.common.Systems;
+import projekt.substratum.common.commands.FileOperations;
+import projekt.substratum.common.platform.ThemeManager;
+import projekt.substratum.databinding.TabOverlaysBinding;
+import projekt.substratum.util.compilers.SubstratumBuilder;
+import projekt.substratum.util.helpers.Root;
+import projekt.substratum.util.views.Lunchbar;
+import projekt.substratum.util.views.SheetDialog;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -80,29 +90,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-
-import projekt.substratum.BuildConfig;
-import projekt.substratum.InformationActivity;
-import projekt.substratum.R;
-import projekt.substratum.adapters.tabs.overlays.OverlaysAdapter;
-import projekt.substratum.adapters.tabs.overlays.OverlaysItem;
-import projekt.substratum.adapters.tabs.overlays.VariantAdapter;
-import projekt.substratum.adapters.tabs.overlays.VariantItem;
-import projekt.substratum.common.Internal;
-import projekt.substratum.common.Packages;
-import projekt.substratum.common.References;
-import projekt.substratum.common.Systems;
-import projekt.substratum.common.commands.FileOperations;
-import projekt.substratum.common.platform.ThemeManager;
-import projekt.substratum.databinding.TabOverlaysBinding;
-import projekt.substratum.util.compilers.SubstratumBuilder;
-import projekt.substratum.util.helpers.Root;
-import projekt.substratum.util.views.Lunchbar;
-import projekt.substratum.util.views.SheetDialog;
 
 import static android.content.Context.ACTIVITY_SERVICE;
 import static android.content.Context.NOTIFICATION_SERVICE;
@@ -164,29 +151,29 @@ import static projekt.substratum.util.helpers.MapUtils.sortMapByValues;
 public class Overlays extends Fragment {
 
     public static AsyncTask mainLoader = null;
+    final OverlaysInstance currentInstance = OverlaysInstance.getInstance();
     // Theme instance based variables, used globally amongst all Overlays* files
     public String themeName;
     public String themePid;
-    public String themeVersion;
-    public Cipher themeCipher;
     public boolean encrypted = false;
-    public boolean mixAndMatchMode = false;
-    public final OverlaysInstance currentInstance = OverlaysInstance.getInstance();
-    public SubstratumBuilder compileInstance;
-    public List<OverlaysItem> overlayItemList;
-    public List<String> currentInstanceOverlays;
-    // Begin functional variables with no theme-related information
-    public SheetDialog compileDialog;
-    public SharedPreferences prefs;
-    public OverlaysAdapter overlaysAdapter;
-    public NotificationManager notifyManager;
+    public SharedPreferences prefs = Substratum.getPreferences();
     public NotificationCompat.Builder builder;
-    public ProgressBar dialogProgress;
-    public AssetManager themeAssetManager;
-    public ActivityManager activityManager;
     public ProgressBar progressBar;
-    public Switch toggleAll;
-    public Spinner baseSpinner;
+    String themeVersion;
+    Cipher themeCipher;
+    boolean mixAndMatchMode = false;
+    SubstratumBuilder compileInstance;
+    List<OverlaysItem> overlayItemList;
+    List<String> currentInstanceOverlays;
+    // Begin functional variables with no theme-related information
+    SheetDialog compileDialog;
+    OverlaysAdapter overlaysAdapter;
+    NotificationManager notifyManager;
+    ProgressBar dialogProgress;
+    AssetManager themeAssetManager;
+    ActivityManager activityManager;
+    Switch toggleAll;
+    Spinner baseSpinner;
     Context context;
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -210,7 +197,7 @@ public class Overlays extends Fragment {
      *
      * @return Returns masterView of {@link InformationActivity}
      */
-    public View getActivityView() {
+    View getActivityView() {
         InformationActivity informationActivity = ((InformationActivity) getActivity());
         if (informationActivity != null) {
             View coordinatorLayout = References.getCoordinatorLayoutView(informationActivity);
@@ -287,7 +274,6 @@ public class Overlays extends Fragment {
         swipeRefreshLayout = viewBinding.swipeRefreshLayout;
 
         context = getContext();
-        prefs = PreferenceManager.getDefaultSharedPreferences(context);
         activityManager = (ActivityManager) context.getSystemService(ACTIVITY_SERVICE);
         notifyManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
         compileDialog = new SheetDialog(context);
@@ -319,16 +305,16 @@ public class Overlays extends Fragment {
                             new SecretKeySpec(encryptionKey, SECRET_KEY_SPEC),
                             new IvParameterSpec(ivEncryptKey)
                     );
-                    Log.d(SUBSTRATUM_BUILDER, "Loading substratum theme in encrypted assets mode.");
+                    Substratum.log(SUBSTRATUM_BUILDER, "Loading substratum theme in encrypted assets mode.");
                     encrypted = true;
                 } catch (Exception e) {
                     e.printStackTrace();
-                    Log.d(SUBSTRATUM_BUILDER,
+                    Substratum.log(SUBSTRATUM_BUILDER,
                             "Loading substratum theme in decrypted assets mode due to an exception.");
                     decryptedAssetsExceptionReached = true;
                 }
             } else {
-                Log.d(SUBSTRATUM_BUILDER, "Loading substratum theme in decrypted assets mode.");
+                Substratum.log(SUBSTRATUM_BUILDER, "Loading substratum theme in decrypted assets mode.");
             }
 
             if (decryptedAssetsExceptionReached) {
@@ -359,7 +345,7 @@ public class Overlays extends Fragment {
 
         File workArea = new File(EXTERNAL_STORAGE_CACHE);
         if (!workArea.exists() && workArea.mkdir()) {
-            Log.d(SUBSTRATUM_BUILDER,
+            Substratum.log(SUBSTRATUM_BUILDER,
                     "Updating the internal storage with proper file directories...");
         }
 
@@ -473,7 +459,7 @@ public class Overlays extends Fragment {
                     baseSpinner.setVisibility(View.VISIBLE);
                     baseSpinner.setAdapter(adapter1);
                     try {
-                        Log.d(SUBSTRATUM_BUILDER,
+                        Substratum.log(SUBSTRATUM_BUILDER,
                                 "Assigning the spinner position: " +
                                         prefs2.getInt(themePid, 0));
                         if (prefs2.getInt(themePid, 0) <= type3.size() - 1) {
@@ -483,7 +469,7 @@ public class Overlays extends Fragment {
                         }
                     } catch (Exception e) {
                         // Should be OutOfBounds, but let's catch everything
-                        Log.d(SUBSTRATUM_BUILDER, "Falling back to default spinner position due to an error...");
+                        Substratum.log(SUBSTRATUM_BUILDER, "Falling back to default spinner position due to an error...");
                         prefs2.edit().putInt(themePid, 0).apply();
                         baseSpinner.setSelection(0);
                     }
@@ -729,7 +715,7 @@ public class Overlays extends Fragment {
             return new VariantItem(formatter, hex);
         } catch (Exception e) {
             // When erroring out, put the default spinner text
-            Log.d(SUBSTRATUM_BUILDER, "Falling back to default base variant text...");
+            Substratum.log(SUBSTRATUM_BUILDER, "Falling back to default base variant text...");
             String hex = null;
             if (encrypted) {
                 try (InputStream input = FileOperations.getInputStream(
@@ -780,7 +766,7 @@ public class Overlays extends Fragment {
             return new VariantItem(String.format(
                     getString(R.string.overlays_variant_substitute), reader.readLine()), null);
         } catch (Exception e) {
-            Log.d(SUBSTRATUM_BUILDER, "Falling back to default base variant text...");
+            Substratum.log(SUBSTRATUM_BUILDER, "Falling back to default base variant text...");
             switch (typeValue) {
                 case 2:
                     return new VariantItem(
@@ -898,7 +884,7 @@ public class Overlays extends Fragment {
                 mainLoader = new LoadOverlays(this).execute("");
             }
         } else {
-            Log.d(SUBSTRATUM_LOG,
+            Substratum.log(SUBSTRATUM_LOG,
                     "Overlay compilation in progress, will skip refreshing layout until the end.");
         }
     }
@@ -1039,10 +1025,10 @@ public class Overlays extends Fragment {
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     private static class LoadOverlays extends AsyncTask<String, Integer, String> {
         private final WeakReference<Overlays> ref;
+        private final String themePid;
         private String parsedThemeName;
         private ArrayList<OverlaysItem> adapterList;
         private List<String> currentOverlays;
-        private final String themePid;
 
         LoadOverlays(Overlays fragment) {
             super();
@@ -1575,7 +1561,7 @@ public class Overlays extends Fragment {
             } else if (!compileDialog.isShowing()) {
                 refreshList();
             } else {
-                Log.d(SUBSTRATUM_BUILDER,
+                Substratum.log(SUBSTRATUM_BUILDER,
                         "Refresh overlays has been cancelled during compilation phase...");
             }
         }

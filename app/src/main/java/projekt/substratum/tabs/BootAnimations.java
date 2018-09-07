@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.tabs;
@@ -24,20 +13,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.databinding.DataBindingUtil;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.widget.NestedScrollView;
-import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -48,6 +29,21 @@ import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.widget.NestedScrollView;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import com.google.android.material.snackbar.Snackbar;
+import projekt.substratum.R;
+import projekt.substratum.Substratum;
+import projekt.substratum.common.Systems;
+import projekt.substratum.common.commands.FileOperations;
+import projekt.substratum.databinding.TabBootanimationsBinding;
+import projekt.substratum.util.helpers.Root;
+import projekt.substratum.util.tabs.BootAnimationUtils;
+import projekt.substratum.util.views.Lunchbar;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -64,14 +60,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
-import projekt.substratum.R;
-import projekt.substratum.common.Systems;
-import projekt.substratum.common.commands.FileOperations;
-import projekt.substratum.databinding.TabBootanimationsBinding;
-import projekt.substratum.util.helpers.Root;
-import projekt.substratum.util.tabs.BootAnimationUtils;
-import projekt.substratum.util.views.Lunchbar;
 
 import static projekt.substratum.InformationActivity.currentShownLunchBar;
 import static projekt.substratum.common.Internal.BOOTANIMATION_CACHE;
@@ -103,7 +91,7 @@ public class BootAnimations extends Fragment {
     private Spinner bootAnimationSelector;
     private String themePid;
     private ProgressDialog mProgressDialog;
-    private SharedPreferences prefs;
+    private SharedPreferences prefs = Substratum.getPreferences();
     private AsyncTask current;
     private boolean paused;
     private JobReceiver jobReceiver;
@@ -156,7 +144,6 @@ public class BootAnimations extends Fragment {
         }
 
         previewHandlerThread.start();
-        prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
         if (shutdownBootAnimation) {
             placeholderText.setText(R.string.shutdownanimation_placeholder_text);
@@ -378,7 +365,7 @@ public class BootAnimations extends Fragment {
             final File checkFile = new File(file_location);
             final int fileSize = Integer.parseInt(
                     String.valueOf(checkFile.length() / 1024L / 1024L));
-            Log.d(TAG, "Managing bootanimation with size: " + fileSize + "MB");
+            Substratum.log(TAG, "Managing bootanimation with size: " + fileSize + "MB");
 
             if (fileSize <= 5) {
                 return 1;
@@ -465,11 +452,11 @@ public class BootAnimations extends Fragment {
             final BootAnimations bootAnimations = ref.get();
             if (bootAnimations != null) {
                 try {
-                    Log.d(TAG, "Loaded boot animation contains " +
+                    Substratum.log(TAG, "Loaded boot animation contains " +
                             bootAnimations.previewImages.size() + " frames.");
 
                     if (bootAnimations.bootAnimationSelector.getSelectedItemPosition() > 1) {
-                        Log.d(TAG, "Displaying bootanimation after render task complete!");
+                        Substratum.log(TAG, "Displaying bootanimation after render task complete!");
                         bootAnimations.previewHandler.post(bootAnimations.previewRunnable);
                     }
                     bootAnimations.progressBar.setVisibility(View.GONE);
@@ -489,18 +476,18 @@ public class BootAnimations extends Fragment {
                             bootAnimations.context.getCacheDir(), BOOTANIMATION_CACHE);
 
                     if (!cacheDirectory.exists() && cacheDirectory.mkdirs()) {
-                        Log.d(TAG, "Bootanimation folder created");
+                        Substratum.log(TAG, "Bootanimation folder created");
                     }
                     final File cacheDirectory2 = new File(bootAnimations.context.getCacheDir(),
                             BOOTANIMATION_PREVIEW_CACHE);
                     if (!cacheDirectory2.exists() && cacheDirectory2.mkdirs()) {
-                        Log.d(TAG, "Bootanimation work folder created");
+                        Substratum.log(TAG, "Bootanimation work folder created");
                     } else {
                         FileOperations.delete(bootAnimations.context,
                                 bootAnimations.context.getCacheDir().getAbsolutePath() +
                                         BOOTANIMATION_PREVIEW_CACHE);
                         final boolean created = cacheDirectory2.mkdirs();
-                        if (created) Log.d(TAG, "Bootanimation folder recreated");
+                        if (created) Substratum.log(TAG, "Bootanimation folder recreated");
                     }
 
                     // Copy the bootanimation.zip from assets/bootanimation of the theme's assets

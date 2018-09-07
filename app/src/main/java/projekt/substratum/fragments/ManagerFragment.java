@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.fragments;
@@ -26,21 +15,11 @@ import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.databinding.DataBindingUtil;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.util.Pair;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.text.SpannableStringBuilder;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -55,19 +34,16 @@ import android.widget.SearchView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.util.Pair;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.gordonwong.materialsheetfab.MaterialSheetFab;
-
-import java.io.File;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import projekt.substratum.MainActivity;
 import projekt.substratum.R;
 import projekt.substratum.Substratum;
@@ -82,6 +58,16 @@ import projekt.substratum.common.platform.ThemeManager;
 import projekt.substratum.databinding.ManagerFragmentBinding;
 import projekt.substratum.util.helpers.StringUtils;
 import projekt.substratum.util.views.FloatingActionMenu;
+
+import java.io.File;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import static projekt.substratum.MainActivity.userInput;
 import static projekt.substratum.common.Packages.getOverlayMetadata;
@@ -120,7 +106,7 @@ public class ManagerFragment extends Fragment {
     private TextView textView;
     private ArrayList<String> activatedOverlays;
     private ManagerAdapter mAdapter;
-    private SharedPreferences prefs;
+    private SharedPreferences prefs = Substratum.getPreferences();
     private List<ManagerItem> overlaysList;
     private Boolean firstRun;
     private List<ManagerItem> overlayList;
@@ -195,7 +181,7 @@ public class ManagerFragment extends Fragment {
         setHasOptionsMenu(true);
 
         context = Substratum.getInstance();
-        prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        prefs = Substratum.getPreferences();
 
         ManagerFragmentBinding managerFragmentBinding =
                 DataBindingUtil.inflate(inflater, R.layout.manager_fragment, container, false);
@@ -661,8 +647,8 @@ public class ManagerFragment extends Fragment {
                                 }
                                 combined.append(getPackageName(context,
                                         getOverlayTarget(context, overlay)));
-                                if (!combined.toString().toLowerCase(Locale.US).contains(
-                                        userInputString.toLowerCase(Locale.US))) {
+                                if (!combined.toString().toLowerCase().contains(
+                                        userInputString.toLowerCase())) {
                                     canContinue = false;
                                 }
                             }
@@ -726,12 +712,13 @@ public class ManagerFragment extends Fragment {
                         }
                     }
 
-                    try {
-                        Thread.sleep((long) (fragment.firstBoot ?
-                                MANAGER_FRAGMENT_INITIAL_DELAY : 0));
-                    } catch (InterruptedException ignored) {
+                    if (fragment.firstBoot) {
+                        try {
+                            Thread.sleep((long) MANAGER_FRAGMENT_INITIAL_DELAY);
+                        } catch (InterruptedException ignored) {
+                        }
+                        fragment.firstBoot = false;
                     }
-                    if (fragment.firstBoot) fragment.firstBoot = false;
                 } catch (Exception ignored) {
                     // Consume window refresh
                 }
@@ -753,8 +740,6 @@ public class ManagerFragment extends Fragment {
                 fragment.recyclerView.getLayoutManager().scrollToPosition(this.currentPosition);
                 fragment.recyclerView.setEnabled(true);
                 fragment.overlayList = fragment.mAdapter.getOverlayManagerList();
-
-                new MainActivity.DoCleanUp(context).execute();
 
                 boolean alphabetize = fragment.prefs.getBoolean("alphabetize_overlays", true);
                 if (!fragment.overlaysList.isEmpty()) {
@@ -802,7 +787,8 @@ public class ManagerFragment extends Fragment {
                 if (!Systems.checkOMS(fragment.context)) {
                     fragment.enableSelected.setVisibility(View.GONE);
                 }
-                if (fragment.firstRun == null) fragment.firstRun = false;
+                if (fragment.firstRun == null)
+                    fragment.firstRun = false;
             }
         }
     }
@@ -1002,36 +988,34 @@ public class ManagerFragment extends Fragment {
                                         fragment.overlaysList.get(i).getName() + ".apk");
                                 FileOperations.bruteforceDelete(VENDOR_DIR +
                                         fragment.overlaysList.get(i).getName() + ".apk");
-                                String legacy_resource_idmap =
-                                        (LEGACY_NEXUS_DIR.substring(1, LEGACY_NEXUS_DIR
-                                                .length()) +
+                                String legacyResourceIdmap =
+                                        (LEGACY_NEXUS_DIR.substring(1) +
                                                 fragment.overlaysList.get(i).getName())
                                                 .replace("/", "@") + ".apk@idmap";
-                                String pixel_resource_idmap =
-                                        (PIXEL_NEXUS_DIR.substring(1, PIXEL_NEXUS_DIR.length
-                                                ()) +
+                                String pixelResourceIdmap =
+                                        (PIXEL_NEXUS_DIR.substring(1) +
                                                 fragment.overlaysList.get(i).getName())
                                                 .replace("/", "@") + ".apk@idmap";
-                                String vendor_resource_idmap =
-                                        (VENDOR_DIR.substring(1, VENDOR_DIR.length()) +
+                                String vendorResourceIdmap =
+                                        (VENDOR_DIR.substring(1) +
                                                 fragment.overlaysList.get(i).getName())
                                                 .replace("/", "@") + ".apk@idmap";
-                                Log.d(getClass().getSimpleName(),
+                                Substratum.log(getClass().getSimpleName(),
                                         "Removing idmap resource pointer '" +
-                                                legacy_resource_idmap + '\'');
+                                                legacyResourceIdmap + '\'');
 
                                 FileOperations.bruteforceDelete(DATA_RESOURCE_DIR +
-                                        legacy_resource_idmap);
-                                Log.d(getClass().getSimpleName(),
+                                        legacyResourceIdmap);
+                                Substratum.log(getClass().getSimpleName(),
                                         "Removing idmap resource pointer '" +
-                                                pixel_resource_idmap + '\'');
+                                                pixelResourceIdmap + '\'');
                                 FileOperations.bruteforceDelete(DATA_RESOURCE_DIR +
-                                        pixel_resource_idmap);
-                                Log.d(getClass().getSimpleName(),
+                                        pixelResourceIdmap);
+                                Substratum.log(getClass().getSimpleName(),
                                         "Removing idmap resource pointer '" +
-                                                vendor_resource_idmap + '\'');
+                                                vendorResourceIdmap + '\'');
                                 FileOperations.bruteforceDelete(DATA_RESOURCE_DIR +
-                                        vendor_resource_idmap);
+                                        vendorResourceIdmap);
                                 FileOperations.mountROVendor();
                                 FileOperations.mountROData();
                                 FileOperations.mountRO();
@@ -1352,7 +1336,7 @@ public class ManagerFragment extends Fragment {
     class RefreshReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.d("ManagerRefresher", "A package has been modified, now refreshing the list...");
+            Substratum.log("ManagerRefresher", "A package has been modified, now refreshing the list...");
             if (layoutReloader != null && !layoutReloader.isCancelled()) {
                 layoutReloader.cancel(true);
                 layoutReloader = new LayoutReloader(ManagerFragment.this, userInput);

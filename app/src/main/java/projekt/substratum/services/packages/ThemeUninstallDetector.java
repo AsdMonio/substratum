@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.services.packages;
@@ -26,16 +15,9 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
-import android.preference.PreferenceManager;
 import android.util.Log;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-
 import projekt.substratum.MainActivity;
+import projekt.substratum.Substratum;
 import projekt.substratum.common.Broadcasts;
 import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
@@ -44,6 +26,12 @@ import projekt.substratum.tabs.BootAnimationsManager;
 import projekt.substratum.tabs.FontsManager;
 import projekt.substratum.tabs.SoundsManager;
 import projekt.substratum.tabs.WallpapersManager;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import static projekt.substratum.common.Internal.BOOT_ANIMATION_APPLIED;
 import static projekt.substratum.common.Internal.SHUTDOWN_ANIMATION_APPLIED;
@@ -68,13 +56,12 @@ public class ThemeUninstallDetector extends BroadcastReceiver {
             }
 
             if (packageName1.equals(SST_ADDON_PACKAGE)) {
-                SharedPreferences prefs =
-                        context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
+                SharedPreferences prefs = context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
                 prefs.edit().clear().apply();
                 Broadcasts.sendKillMessage(context);
             }
 
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+            SharedPreferences prefs = Substratum.getPreferences();
             if (prefs.contains("installed_themes")) {
                 Set installedThemes = prefs.getStringSet("installed_themes", null);
                 if ((installedThemes != null) && installedThemes.contains(packageName1)) {

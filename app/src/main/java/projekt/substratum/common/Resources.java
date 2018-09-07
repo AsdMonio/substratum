@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common;
@@ -21,22 +10,19 @@ package projekt.substratum.common;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
-import android.util.Log;
+import dalvik.system.DexClassLoader;
+import projekt.substratum.Substratum;
 
 import java.util.Arrays;
-
-import dalvik.system.DexClassLoader;
 
 import static projekt.substratum.common.References.INTERFACER_PACKAGE;
 import static projekt.substratum.common.References.SUBSTRATUM_LOG;
 import static projekt.substratum.common.Systems.checkAndromeda;
-import static projekt.substratum.common.Systems.checkOreo;
 import static projekt.substratum.common.Systems.checkSubstratumService;
 import static projekt.substratum.common.Systems.checkThemeInterfacer;
 import static projekt.substratum.common.Systems.isSamsungDevice;
 
-public enum Resources {
-    ;
+public class Resources {
 
     public static final String FRAMEWORK = "android";
     public static final String SETTINGS = "com.android.settings";
@@ -67,7 +53,13 @@ public enum Resources {
             "InflateException",
             "UnsupportedOperationException"
     };
-
+    // List of stock overlay packages on Pixel devices
+    // We don't want to run any operations on them.
+    public static final String[] PIXEL_OVERLAY_PACKAGES = {
+            "android.auto_generated_rro__",
+            "com.google.android.theme.pixel",
+            "com.android.systemui.theme.dark",
+    };
     private static final String[] ALLOWED_SOUNDS = {
             "alarm.mp3",
             "alarm.ogg",
@@ -82,15 +74,6 @@ public enum Resources {
             "Unlock.mp3",
             "Unlock.ogg",
     };
-
-    // List of stock overlay packages on Pixel devices
-    // We don't want to run any operations on them.
-    public static final String[] PIXEL_OVERLAY_PACKAGES = {
-            "android.auto_generated_rro__",
-            "com.google.android.theme.pixel",
-            "com.android.systemui.theme.dark",
-    };
-
     // These packages will be exempt from having the Samsung overlay permission added onto it
     private static final String[] SAMSUNG_PERMISSION_BLACKLIST_PACKAGES = {
             "com.sec.android.app.music",
@@ -181,9 +164,9 @@ public enum Resources {
     @SuppressWarnings("JavaReflectionMemberAccess")
     public static boolean isFontsSupported(Context context) {
         if (checkSubstratumService(context)) {
-            Log.d(SUBSTRATUM_LOG, "This system fully supports font hotswapping.");
+            Substratum.log(SUBSTRATUM_LOG, "This system fully supports font hotswapping.");
             return true;
-        } else if (checkOreo() && !checkSubstratumService(context)) {
+        } else if (Systems.IS_OREO && !checkSubstratumService(context)) {
             return false;
         }
         try {
@@ -191,7 +174,7 @@ public enum Resources {
             cls.getDeclaredMethod("getSystemFontDirLocation");
             cls.getDeclaredMethod("getThemeFontConfigLocation");
             cls.getDeclaredMethod("getThemeFontDirLocation");
-            Log.d(SUBSTRATUM_LOG, "This system fully supports font hotswapping.");
+            Substratum.log(SUBSTRATUM_LOG, "This system fully supports font hotswapping.");
             return true;
         } catch (final Exception ignored) {
             return false;
@@ -212,7 +195,7 @@ public enum Resources {
     // This method checks whether custom shutdown animation is supported by the system
     public static boolean isShutdownAnimationSupported(Context context) {
         if (checkSubstratumService(context)) {
-            Log.d(SUBSTRATUM_LOG, "This system fully supports theme shutdown animation.");
+            Substratum.log(SUBSTRATUM_LOG, "This system fully supports theme shutdown animation.");
             return true;
         }
         try {
@@ -223,7 +206,7 @@ public enum Resources {
             cls.getDeclaredMethod("themeShutdownAnimationExists");
             cls.getDeclaredMethod("startShutdownAnimation");
             cls.getDeclaredMethod("stopShutdownAnimation");
-            Log.d(SUBSTRATUM_LOG, "This system fully supports theme shutdown animation.");
+            Substratum.log(SUBSTRATUM_LOG, "This system fully supports theme shutdown animation.");
             return true;
         } catch (Exception ignored) {
         }

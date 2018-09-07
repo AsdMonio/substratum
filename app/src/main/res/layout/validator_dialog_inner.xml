@@ -1,26 +1,15 @@
 <!--
-  ~ Copyright (c) 2016-2017 Projekt Substratum
+  ~ Copyright (c) 2016-2018 Projekt Substratum
   ~ This file is part of Substratum.
   ~
-  ~ Substratum is free software: you can redistribute it and/or modify
-  ~ it under the terms of the GNU General Public License as published by
-  ~ the Free Software Foundation, either version 3 of the License, or
-  ~ (at your option) any later version.
-  ~
-  ~ Substratum is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  ~ GNU General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU General Public License
-  ~ along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+  ~ SPDX-License-Identifier: GPL-3.0-Or-Later
   -->
 
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
 
-    <android.support.v7.widget.ButtonBarLayout
+    <androidx.appcompat.widget.ButtonBarLayout
         android:id="@+id/title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -37,9 +26,9 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-    </android.support.v7.widget.ButtonBarLayout>
+    </androidx.appcompat.widget.ButtonBarLayout>
 
-    <android.support.v7.widget.RecyclerView
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -50,7 +39,7 @@
         android:paddingTop="15dp"
         android:paddingEnd="10dp" />
 
-    <android.support.v7.widget.ButtonBarLayout
+    <androidx.appcompat.widget.ButtonBarLayout
         android:id="@+id/button_bar_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -71,6 +60,6 @@
             android:text="@string/resource_checker_dialog_quit"
             android:textColor="?colorAccent" />
 
-    </android.support.v7.widget.ButtonBarLayout>
+    </androidx.appcompat.widget.ButtonBarLayout>
 
 </RelativeLayout>

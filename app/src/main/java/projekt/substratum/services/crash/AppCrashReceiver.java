@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.services.crash;
@@ -25,16 +14,15 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.support.v4.app.NotificationCompat;
-import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
+import androidx.core.app.NotificationCompat;
+import projekt.substratum.R;
+import projekt.substratum.Substratum;
+import projekt.substratum.common.References;
+import projekt.substratum.common.platform.ThemeManager;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import projekt.substratum.R;
-import projekt.substratum.common.References;
-import projekt.substratum.common.platform.ThemeManager;
 
 import static android.content.Context.NOTIFICATION_SERVICE;
 import static projekt.substratum.common.References.CRASH_PACKAGE_NAME;
@@ -80,8 +68,7 @@ public class AppCrashReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences
-                (context);
+        SharedPreferences sharedPreferences = Substratum.getPreferences();
         boolean enabled = sharedPreferences.getBoolean("crash_receiver", true);
         if (!enabled) return;
 
@@ -95,7 +82,7 @@ public class AppCrashReceiver extends BroadcastReceiver {
                     packageName);
             if (!overlays.isEmpty()) {
                 for (String overlay : overlays) {
-                    Log.d("AppCrashReciever", String.format("Disabling overlay %s for package " +
+                    Substratum.log("AppCrashReciever", String.format("Disabling overlay %s for package " +
                             "%s", overlay, packageName));
                 }
 
@@ -109,7 +96,7 @@ public class AppCrashReceiver extends BroadcastReceiver {
             switch (sharedPreferences.getInt("sysui_crash_count", 0)) {
                 case 0:
                 case 1:
-                    Log.d("AppCrashReceiver",
+                    Substratum.log("AppCrashReceiver",
                             String.format("SystemUI crash count %s",
                                     sharedPreferences.getInt("sysui_crash_count", 1)));
                     sharedPreferences.edit().putInt("sysui_crash_count",
@@ -117,7 +104,7 @@ public class AppCrashReceiver extends BroadcastReceiver {
                                     0) + 1).apply();
                     break;
                 case 2:
-                    Log.d("AppCrashReceiver", "Disabling all SystemUI overlays now.");
+                    Substratum.log("AppCrashReceiver", "Disabling all SystemUI overlays now.");
                     sharedPreferences.edit().remove("sysui_crash_count").apply();
                     AppCrashReceiver.postNotificationAndDisableOverlays(context,
                             AppCrashReceiver.getApplicationLabel(context, packageName),

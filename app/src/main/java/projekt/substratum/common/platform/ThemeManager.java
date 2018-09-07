@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common.platform;
@@ -31,28 +20,33 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
-import android.preference.PreferenceManager;
-import android.support.annotation.RestrictTo;
 import android.util.Log;
 import android.widget.Toast;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.stream.Collectors;
-
+import androidx.annotation.RestrictTo;
 import projekt.substratum.MainActivity;
 import projekt.substratum.R;
+import projekt.substratum.Substratum;
 import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Resources;
 import projekt.substratum.common.Systems;
 import projekt.substratum.common.commands.ElevatedCommands;
-import projekt.substratum.common.commands.SamsungOverlayCacher;
 import projekt.substratum.common.commands.FileOperations;
+import projekt.substratum.common.commands.SamsungOverlayCacher;
 import projekt.substratum.util.helpers.Root;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.O;
@@ -79,9 +73,12 @@ import static projekt.substratum.common.Systems.checkThemeInterfacer;
 import static projekt.substratum.common.Systems.isNewSamsungDevice;
 import static projekt.substratum.common.Systems.isNewSamsungDeviceAndromeda;
 
-public enum ThemeManager {
-    ;
+public class ThemeManager {
 
+    // State values of OverlayInfo
+    public static final int STATE_MISSING_TARGET = (SDK_INT >= O) ? 0 : 1;
+    public static final int STATE_DISABLED = (SDK_INT >= O) ? 2 : 4;
+    public static final int STATE_ENABLED = (SDK_INT >= O) ? 3 : 5;
     /**
      * Begin interaction with the OverlayManagerService binaries.
      * <p>
@@ -91,10 +88,6 @@ public enum ThemeManager {
      * NOTE: Deprecation at the OMS3 level. We no longer support OMS3 commands.
      */
     private static final String disableOverlay = "cmd overlay disable";
-    // State values of OverlayInfo
-    public static final int STATE_MISSING_TARGET = (SDK_INT >= O) ? 0 : 1;
-    public static final int STATE_DISABLED = (SDK_INT >= O) ? 2 : 4;
-    public static final int STATE_ENABLED = (SDK_INT >= O) ? 3 : 5;
     private static final String enableOverlay = "cmd overlay enable";
     private static final String listAllOverlays = "cmd overlay list";
     private static final String setPriority = "cmd overlay set-priority";
@@ -144,7 +137,7 @@ public enum ThemeManager {
         if (overlays.isEmpty()) return;
         overlays.removeAll(Arrays.asList(PIXEL_OVERLAY_PACKAGES));
 
-        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences sharedPrefs = Substratum.getPreferences();
 
         if (sharedPrefs.getBoolean("auto_disable_target_overlays", false)) {
             for (String overlay : overlays) {
@@ -301,7 +294,7 @@ public enum ThemeManager {
      * @param context Context
      */
     public static void restartSystemUI(Context context) {
-        Log.d(References.SUBSTRATUM_LOG, "Restarting SystemUI");
+        Substratum.log(References.SUBSTRATUM_LOG, "Restarting SystemUI");
         if (checkSubstratumService(context)) {
             SubstratumService.restartSystemUi();
         } else if (checkThemeInterfacer(context)) {
@@ -385,7 +378,7 @@ public enum ThemeManager {
                         for (Map.Entry<String, List<OverlayInfo>> stringListEntry :
                                 allOverlays.entrySet()) {
                             for (OverlayInfo oi : stringListEntry.getValue()) {
-                                if (oi.isApproved()) {
+                                if (oi.isEnabled()) {
                                     list.add(oi.packageName);
                                 }
                             }
@@ -430,7 +423,7 @@ public enum ThemeManager {
         } catch (Exception e) {
             // At this point, we probably ran into a legacy command or stock OMS
             if (!isNewSamsungDeviceAndromeda(context) &&
-                    (Systems.checkOMS(context) || Systems.checkOreo()) &&
+                    (Systems.checkOMS(context) || Systems.IS_OREO) &&
                     !MainActivity.instanceBasedAndromedaFailure) {
                 String prefix;
                 if (overlayState == STATE_ENABLED) {
@@ -450,14 +443,14 @@ public enum ThemeManager {
                                     "/.andromeda/overlays.xml");
 
                     // Call Andromeda to output the file!
-                    Log.d("ThemeManager", "Fetching new file from Andromeda, please wait!");
+                    Substratum.log("ThemeManager", "Fetching new file from Andromeda, please wait!");
                     AndromedaService.listOverlays();
                     int counter = 0;
                     while (!overlays.exists() && (counter <= 200)) {
                         try {
                             Thread.sleep(10L);
                             counter++;
-                            Log.d("ThemeManager",
+                            Substratum.log("ThemeManager",
                                     "Substratum is still waiting for a response " +
                                             "from Andromeda...");
                         } catch (InterruptedException e1) {
@@ -733,7 +726,7 @@ public enum ThemeManager {
             shouldRestartUi = shouldRestartUI(context, temp);
         }
 
-        if (Systems.checkP()) {
+        if (Systems.IS_PIE && !checkSubstratumService(context)) {
             FileOperations.mountRW();
             for (String overlay : overlays) {
                 FileOperations.bruteforceDelete(P_DIR + '_' + overlay + ".apk");
@@ -768,7 +761,7 @@ public enum ThemeManager {
                         !Root.requestRootAccess())) {
             for (String overlay : overlays) {
                 Uri packageURI = Uri.parse("package:" + overlay);
-                Intent uninstallIntent = new Intent(Intent.ACTION_DELETE, packageURI);
+                Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageURI);
                 context.startActivity(uninstallIntent);
             }
         } else {

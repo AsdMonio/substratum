@@ -1,29 +1,19 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common.commands;
 
 import android.content.Context;
-
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-
-import java.io.StringWriter;
+import projekt.substratum.BuildConfig;
+import projekt.substratum.common.Packages;
+import projekt.substratum.common.References;
+import projekt.substratum.common.Systems;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -35,21 +25,16 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-
-import projekt.substratum.BuildConfig;
-import projekt.substratum.common.Packages;
-import projekt.substratum.common.References;
+import java.io.StringWriter;
 
 import static projekt.substratum.common.References.COMMON_PACKAGE;
 import static projekt.substratum.common.References.ENABLE_AAPT_OUTPUT;
 import static projekt.substratum.common.References.SAMSUNG_OVERLAY_PERMISSION;
 import static projekt.substratum.common.Resources.allowedForSamsungPermission;
-import static projekt.substratum.common.Systems.checkOreo;
 import static projekt.substratum.common.Systems.getDeviceID;
 import static projekt.substratum.common.Systems.isNewSamsungDevice;
 
-public enum CompilerCommands {
-    ;
+public class CompilerCommands {
 
     /**
      * Create the overlay's manifest
@@ -121,7 +106,7 @@ public enum CompilerCommands {
             if (!themeOms)
                 overlayElement.setAttribute("android:priority", String.valueOf(legacyPriority));
             overlayElement.setAttribute("android:targetPackage", targetPackage);
-            if (checkOreo()) overlayElement.setAttribute("android:isStatic", "false");
+            if (Systems.IS_OREO) overlayElement.setAttribute("android:isStatic", "false");
             rootElement.appendChild(overlayElement);
 
             Element applicationElement = document.createElement("application");

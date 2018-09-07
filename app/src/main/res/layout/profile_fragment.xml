@@ -1,19 +1,8 @@
 <!--
-  ~ Copyright (c) 2016-2017 Projekt Substratum
+  ~ Copyright (c) 2016-2018 Projekt Substratum
   ~ This file is part of Substratum.
   ~
-  ~ Substratum is free software: you can redistribute it and/or modify
-  ~ it under the terms of the GNU General Public License as published by
-  ~ the Free Software Foundation, either version 3 of the License, or
-  ~ (at your option) any later version.
-  ~
-  ~ Substratum is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  ~ GNU General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU General Public License
-  ~ along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+  ~ SPDX-License-Identifier: GPL-3.0-Or-Later
   -->
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
@@ -40,7 +29,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <android.support.v7.widget.CardView
+                <androidx.cardview.widget.CardView
                     android:id="@+id/backup_card"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -114,9 +103,9 @@
 
                     </RelativeLayout>
 
-                </android.support.v7.widget.CardView>
+                </androidx.cardview.widget.CardView>
 
-                <android.support.v7.widget.CardView
+                <androidx.cardview.widget.CardView
                     android:id="@+id/restore_card"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -192,9 +181,9 @@
 
                     </RelativeLayout>
 
-                </android.support.v7.widget.CardView>
+                </androidx.cardview.widget.CardView>
 
-                <android.support.v7.widget.CardView
+                <androidx.cardview.widget.CardView
                     android:id="@+id/scheduled_profiles_card"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -350,7 +339,7 @@
                             android:text="@string/apply"
                             android:textColor="@color/restore_button_text_color" />
                     </RelativeLayout>
-                </android.support.v7.widget.CardView>
+                </androidx.cardview.widget.CardView>
             </RelativeLayout>
         </ScrollView>
     </RelativeLayout>

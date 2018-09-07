@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum;
@@ -34,19 +23,13 @@ import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.os.Build;
 import android.preference.PreferenceManager;
-import android.support.annotation.RequiresApi;
-import android.support.v7.app.AppCompatDelegate;
 import android.util.Log;
-
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.crash.FirebaseCrash;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-
+import androidx.appcompat.app.AppCompatDelegate;
 import cat.ereza.customactivityoncrash.config.CaocConfig;
+import com.crashlytics.android.Crashlytics;
+import com.crashlytics.android.core.CrashlyticsCore;
+import com.google.firebase.FirebaseApp;
+import io.fabric.sdk.android.Fabric;
 import projekt.substratum.activities.crash.SubstratumCrash;
 import projekt.substratum.common.Broadcasts;
 import projekt.substratum.common.Packages;
@@ -56,10 +39,14 @@ import projekt.substratum.common.platform.ThemeManager;
 import projekt.substratum.services.binder.AndromedaBinderService;
 import projekt.substratum.services.binder.InterfacerBinderService;
 
-import static android.support.v7.app.AppCompatDelegate.MODE_NIGHT_AUTO;
-import static android.support.v7.app.AppCompatDelegate.MODE_NIGHT_NO;
-import static android.support.v7.app.AppCompatDelegate.MODE_NIGHT_YES;
-import static projekt.substratum.BuildConfig.DEBUG;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import static androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_AUTO;
+import static androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO;
+import static androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES;
 import static projekt.substratum.common.References.APP_THEME;
 import static projekt.substratum.common.References.AUTO_THEME;
 import static projekt.substratum.common.References.DARK_THEME;
@@ -67,7 +54,6 @@ import static projekt.substratum.common.References.DEFAULT_THEME;
 import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_ANDROMEDA;
 import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_ROOTED;
 import static projekt.substratum.common.References.RUNTIME_RESOURCE_OVERLAY_N_ROOTED;
-import static projekt.substratum.common.Systems.checkOreo;
 import static projekt.substratum.common.Systems.isAndromedaDevice;
 import static projekt.substratum.common.Systems.isBinderInterfacer;
 
@@ -75,12 +61,13 @@ public class Substratum extends Application {
 
     private static final String BINDER_TAG = "BinderService";
     private static final FinishReceiver finishReceiver = new FinishReceiver();
+    static Thread currentThread;
     private static int initialPackageCount = 0;
     private static int initialOverlayCount = 0;
-    public static Thread currentThread;
     private static Substratum substratum;
     private static boolean isWaiting;
     private static boolean shouldStopThread = false;
+    private static SharedPreferences preferences;
 
     /**
      * Get the current instance of the substratum application
@@ -123,8 +110,8 @@ public class Substratum extends Application {
     /**
      * Stop the ongoing package detection on Samsung
      */
-    public static void stopSamsungPackageMonitor() {
-        Log.d("Substratum",
+    static void stopSamsungPackageMonitor() {
+        log("Substratum",
                 "The overlay package refresher for Samsung devices is now stopping!");
         shouldStopThread = true;
     }
@@ -134,14 +121,14 @@ public class Substratum extends Application {
      *
      * @param context Context!
      */
-    public static void startSamsungPackageMonitor(Context context) {
-        Log.d("Substratum",
+    static void startSamsungPackageMonitor(Context context) {
+        log("Substratum",
                 "The overlay package refresher for Samsung devices has been fully loaded.");
         PackageManager pm = context.getPackageManager();
         List<ApplicationInfo> currentApps =
                 pm.getInstalledApplications(PackageManager.GET_META_DATA);
         initialPackageCount = currentApps.size();
-        if (checkOreo()) initialOverlayCount = ThemeManager.listAllOverlays(context).size();
+        if (Systems.IS_OREO) initialOverlayCount = ThemeManager.listAllOverlays(context).size();
         Timer timer = new Timer();
         TimerTask timerTask = new TimerTask() {
             @Override
@@ -157,12 +144,12 @@ public class Substratum extends Application {
                 List<ApplicationInfo> currentApps =
                         pm.getInstalledApplications(PackageManager.GET_META_DATA);
                 List<String> listOfThemes = new ArrayList<>();
-                if (checkOreo()) listOfThemes = ThemeManager.listAllOverlays(context);
+                if (Systems.IS_OREO) listOfThemes = ThemeManager.listAllOverlays(context);
                 if (initialPackageCount != currentApps.size() ||
-                        (checkOreo() &&
+                        (Systems.IS_OREO &&
                                 initialOverlayCount >= 1 &&
                                 initialOverlayCount != listOfThemes.size())) {
-                    if (checkOreo())
+                    if (Systems.IS_OREO)
                         initialOverlayCount = ThemeManager.listAllOverlays(context).size();
                     initialPackageCount = currentApps.size();
                     Broadcasts.sendOverlayRefreshMessage(context);
@@ -172,6 +159,14 @@ public class Substratum extends Application {
         timer.scheduleAtFixedRate(timerTask, 0, 1000);
         currentThread = new Thread(timerTask);
         currentThread.start();
+    }
+
+    private void configureCrashReporting() {
+        CrashlyticsCore crashlyticsCore = new CrashlyticsCore.Builder()
+                .disabled(BuildConfig.DEBUG)
+                .build();
+
+        Fabric.with(this, new Crashlytics.Builder().core(crashlyticsCore).build());
     }
 
     /**
@@ -197,14 +192,21 @@ public class Substratum extends Application {
         System.exit(0);
     }
 
+    public static SharedPreferences getPreferences() { return preferences; }
+
+    public static void log(final String TAG, final String message) {
+        if (!BuildConfig.DEBUG)
+            return;
+        Log.d(TAG, message);
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
         substratum = this;
 
-        SharedPreferences prefs =
-                PreferenceManager.getDefaultSharedPreferences(this.getApplicationContext());
-        String selectedTheme = prefs.getString(APP_THEME, DEFAULT_THEME);
+        preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String selectedTheme = preferences.getString(APP_THEME, DEFAULT_THEME);
         if (!getApplicationContext().getResources().getBoolean(R.bool.forceAppDarkTheme)) {
             switch (selectedTheme) {
                 case AUTO_THEME:
@@ -219,20 +221,20 @@ public class Substratum extends Application {
             }
         } else {
             AppCompatDelegate.setDefaultNightMode(MODE_NIGHT_YES);
-            prefs.edit().putString("app_theme", DARK_THEME).apply();
+            preferences.edit().putString("app_theme", DARK_THEME).apply();
         }
 
-        // Firebase
+        // Firebase and Crashlytics
         try {
             FirebaseApp.initializeApp(this.getApplicationContext());
-            FirebaseCrash.setCrashCollectionEnabled(!DEBUG);
+            configureCrashReporting();
         } catch (IllegalStateException ignored) {
         }
 
         // Dynamically check which theme engine is running at the moment
         if (isAndromedaDevice(this.getApplicationContext())) {
             boolean startBinderService = this.startBinderService(AndromedaBinderService.class);
-            Log.d(BINDER_TAG, "Successful to start the Andromeda binder service: " +
+            log(BINDER_TAG, "Successful to start the Andromeda binder service: " +
                     (startBinderService ? "Success!" : "Failed"));
             if (!startBinderService) {
                 this.stopService(
@@ -240,7 +242,7 @@ public class Substratum extends Application {
             }
         } else if (isBinderInterfacer(this.getApplicationContext())) {
             boolean startBinderService = this.startBinderService(InterfacerBinderService.class);
-            Log.d(BINDER_TAG, "Successful to start the Interfacer binder service: " +
+            log(BINDER_TAG, "Successful to start the Interfacer binder service: " +
                     (startBinderService ? "Success!" : "Failed"));
             if (!startBinderService) {
                 this.stopService(
@@ -272,7 +274,7 @@ public class Substratum extends Application {
      * For Android Oreo and above, we need to ensure our notification channels are properly
      * configured so that we do not get killed off with the new background service limiter.
      */
-    @RequiresApi(Build.VERSION_CODES.O)
+    @android.annotation.TargetApi(Build.VERSION_CODES.O)
     private void createNotificationChannel() {
         NotificationManager notificationManager =
                 (NotificationManager) this.getSystemService(NOTIFICATION_SERVICE);
@@ -315,19 +317,19 @@ public class Substratum extends Application {
         try {
             if (className.equals(AndromedaBinderService.class)) {
                 if (this.checkServiceActivation(AndromedaBinderService.class)) {
-                    Log.d(BINDER_TAG,
+                    log(BINDER_TAG,
                             "This session will utilize the connected Andromeda Binder service!");
                 } else {
-                    Log.d(BINDER_TAG,
+                    log(BINDER_TAG,
                             "Substratum is now connecting to the Andromeda Binder service...");
                     this.startService(new Intent(this.getApplicationContext(),
                             AndromedaBinderService.class));
                 }
             } else if (className.equals(InterfacerBinderService.class)) {
                 if (this.checkServiceActivation(InterfacerBinderService.class)) {
-                    Log.d(BINDER_TAG, "This session will utilize the connected Binder service!");
+                    log(BINDER_TAG, "This session will utilize the connected Binder service!");
                 } else {
-                    Log.d(BINDER_TAG, "Substratum is now connecting to the Binder service...");
+                    log(BINDER_TAG, "Substratum is now connecting to the Binder service...");
                     Intent i = new Intent(this.getApplicationContext(),
                             InterfacerBinderService.class);
                     this.startService(i);
@@ -390,7 +392,7 @@ public class Substratum extends Application {
                 String check = Packages.getOverlayParent(context, packageName);
                 if (check != null) {
                     isWaiting = false;
-                    Log.d("Substratum", "PACKAGE_ADDED: " + packageName);
+                    log("Substratum", "PACKAGE_ADDED: " + packageName);
                 }
             }
         }

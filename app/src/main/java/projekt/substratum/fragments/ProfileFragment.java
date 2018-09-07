@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.fragments;
@@ -28,21 +17,11 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
-import android.databinding.DataBindingUtil;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.CardView;
 import android.text.InputFilter;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -58,21 +37,16 @@ import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.Toast;
-
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.cardview.widget.CardView;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import com.google.android.material.snackbar.Snackbar;
 import net.cachapa.expandablelayout.ExpandableLayout;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-
 import projekt.substratum.R;
 import projekt.substratum.Substratum;
 import projekt.substratum.common.Packages;
@@ -90,6 +64,17 @@ import projekt.substratum.databinding.ProfileFragmentBinding;
 import projekt.substratum.tabs.WallpapersManager;
 import projekt.substratum.util.compilers.SubstratumBuilder;
 import projekt.substratum.util.views.Lunchbar;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.File;
+import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 import static projekt.substratum.common.Internal.ALARM_THEME_DIRECTORY;
 import static projekt.substratum.common.Internal.AUDIO_THEME_DIRECTORY;
@@ -146,10 +131,10 @@ import static projekt.substratum.common.systems.ProfileManager.SCHEDULED_PROFILE
 
 public class ProfileFragment extends Fragment {
 
-    public static int nightHour;
-    public static int nightMinute;
-    public static int dayHour;
-    public static int dayMinute;
+    static int nightHour;
+    static int nightMinute;
+    static int dayHour;
+    static int dayMinute;
     private ProgressBar headerProgress;
     private EditText backupName;
     private Button backupButton;
@@ -176,7 +161,7 @@ public class ProfileFragment extends Fragment {
      * @param hour   Hour
      * @param minute Minute
      */
-    public static void setNightProfileStart(int hour, int minute) {
+    static void setNightProfileStart(int hour, int minute) {
         nightHour = hour;
         nightMinute = minute;
     }
@@ -187,7 +172,7 @@ public class ProfileFragment extends Fragment {
      * @param hour   Hour
      * @param minute Minute
      */
-    public static void setDayProfileStart(int hour, int minute) {
+    static void setDayProfileStart(int hour, int minute) {
         dayHour = hour;
         dayMinute = minute;
     }
@@ -238,7 +223,7 @@ public class ProfileFragment extends Fragment {
         nightProfile = viewBinding.nightSpinner;
         Button applyScheduledProfileButton = viewBinding.applyScheduleButton;
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences prefs = Substratum.getPreferences();
         headerProgress.setVisibility(View.GONE);
 
         // Create a user viewable directory for profiles
@@ -327,7 +312,7 @@ public class ProfileFragment extends Fragment {
                         backupGetText = backupName.getText().toString();
                         BackupFunction backupFunction = new BackupFunction(this);
                         backupFunction.execute();
-                        Log.d(References.SUBSTRATUM_LOG, selectedBackup.toString());
+                        Substratum.log(References.SUBSTRATUM_LOG, selectedBackup.toString());
                         dialog.dismiss();
                         backupName.getText().clear();
                     } else {
@@ -591,11 +576,11 @@ public class ProfileFragment extends Fragment {
                         NO_MEDIA);
                 try {
                     if (!nomediaFile.createNewFile()) {
-                        Log.d(References.SUBSTRATUM_LOG, "Could not create .nomedia file or" +
+                        Substratum.log(References.SUBSTRATUM_LOG, "Could not create .nomedia file or" +
                                 " file already exist!");
                     }
                 } catch (IOException e) {
-                    Log.d(References.SUBSTRATUM_LOG, "Could not create .nomedia file!");
+                    Substratum.log(References.SUBSTRATUM_LOG, "Could not create .nomedia file!");
                     e.printStackTrace();
                 }
 
@@ -691,7 +676,7 @@ public class ProfileFragment extends Fragment {
                     File profileThemeFolder = new File(profileDir, "theme");
                     if (profileThemeFolder.list() != null) {
                         if (profileThemeFolder.list().length == 0) {
-                            Log.d(References.SUBSTRATUM_LOG,
+                            Substratum.log(References.SUBSTRATUM_LOG,
                                     "Profile theme directory is empty! delete " +
                                             (profileThemeFolder.delete() ? "success" : "failed"));
                         }
@@ -787,9 +772,9 @@ public class ProfileFragment extends Fragment {
      */
     private static class RestoreFunction extends AsyncTask<String, Integer, String> {
         final ArrayList<String> to_be_run = new ArrayList<>(); // Overlays going to be enabled
+        private final WeakReference<ProfileFragment> ref;
         List<String> system = new ArrayList<>(); // All installed overlays
         String profile_name;
-        private final WeakReference<ProfileFragment> ref;
 
         RestoreFunction(ProfileFragment profileFragment) {
             super();
@@ -1063,12 +1048,12 @@ public class ProfileFragment extends Fragment {
         private final Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, "Waiting for encryption key handshake approval...");
+                Substratum.log(TAG, "Waiting for encryption key handshake approval...");
                 if (securityIntent != null) {
-                    Log.d(TAG, "Encryption key handshake approved!");
+                    Substratum.log(TAG, "Encryption key handshake approved!");
                     handler.removeCallbacks(runnable);
                 } else {
-                    Log.d(TAG, "Encryption key still null...");
+                    Substratum.log(TAG, "Encryption key still null...");
                     try {
                         Thread.sleep(500L);
                     } catch (InterruptedException e) {
@@ -1178,7 +1163,7 @@ public class ProfileFragment extends Fragment {
                                 (metadataEncryptionValue) &&
                                 !theme.equals(prevTheme)) {
                             prevTheme = theme;
-                            Log.d(TAG, "This overlay for " +
+                            Substratum.log(TAG, "This overlay for " +
                                     Packages.getPackageName(profileFragment.context, theme) +
                                     " is encrypted, passing handshake to the theme package...");
                             encrypted = true;
@@ -1355,7 +1340,7 @@ public class ProfileFragment extends Fragment {
                         );
                         if (sb.hasErroredOut) {
                             // TODO: Handle failed compilation
-                            Log.d(TAG, "Failed to compile profile...");
+                            Substratum.log(TAG, "Failed to compile profile...");
                         } else {
                             if (sb.specialSnowflake || sb.noInstall.length() > 0) {
                                 profileFragment.lateInstall.add(sb.noInstall);

@@ -1,26 +1,14 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.tabs;
 
 import android.content.Context;
-import android.util.Log;
-
+import projekt.substratum.Substratum;
 import projekt.substratum.common.commands.FileOperations;
 import projekt.substratum.common.platform.SubstratumService;
 import projekt.substratum.common.platform.ThemeInterfacerService;
@@ -40,8 +28,7 @@ import static projekt.substratum.common.Systems.checkSubstratumService;
 import static projekt.substratum.common.Systems.checkThemeInterfacer;
 import static projekt.substratum.common.Systems.getDeviceEncryptionStatus;
 
-public enum BootAnimationsManager {
-    ;
+public class BootAnimationsManager {
 
     private static final String TAG = "BootAnimationsManager";
 
@@ -60,7 +47,7 @@ public enum BootAnimationsManager {
         // Check to see if device is decrypted with theme interface
         if (getDeviceEncryptionStatus(context) <= 1) {
             if (checkSubstratumService(context)) {
-                Log.d("BootAnimationUtils",
+                Substratum.log("BootAnimationUtils",
                         "No-root option has been enabled with the inclusion of substratum service...");
                 if (shutdownAnimation) {
                     SubstratumService.setShutdownAnimation(location);
@@ -68,13 +55,13 @@ public enum BootAnimationsManager {
                     SubstratumService.setBootAnimation(location);
                 }
             } else if (checkThemeInterfacer(context)) {
-                Log.d(TAG, "No-root option has been enabled with the inclusion of theme interfacer...");
+                Substratum.log(TAG, "No-root option has been enabled with the inclusion of theme interfacer...");
                 ThemeInterfacerService.setBootAnimation(location);
             }
         } else {
             // We will mount system, make our directory, copy the bootanimation
             // zip into place, set proper permissions, then unmount
-            Log.d(TAG, "Root option has been enabled");
+            Substratum.log(TAG, "Root option has been enabled");
             FileOperations.mountRW();
             FileOperations.mountRWData();
             FileOperations.setPermissions(THEME_755, themeDirectory);

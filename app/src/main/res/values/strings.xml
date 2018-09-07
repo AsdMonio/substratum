@@ -1,19 +1,8 @@
 <!--
-  ~ Copyright (c) 2016-2017 Projekt Substratum
+  ~ Copyright (c) 2016-2018 Projekt Substratum
   ~ This file is part of Substratum.
   ~
-  ~ Substratum is free software: you can redistribute it and/or modify
-  ~ it under the terms of the GNU General Public License as published by
-  ~ the Free Software Foundation, either version 3 of the License, or
-  ~ (at your option) any later version.
-  ~
-  ~ Substratum is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  ~ GNU General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU General Public License
-  ~ along with Substratum.  If not, see <http://www.gnu.org/licensestranslatable="false"translatable="false" translatable="false" />.
+  ~ SPDX-License-Identifier: GPL-3.0-Or-Later
   -->
 
 <resources>
@@ -138,6 +127,7 @@
 
     <string name="backend_not_authorized_title">Substratum debug build not authorized!</string>
     <string name="backend_not_authorized_text">To use this build of substratum with your custom ROM, please enable \'Force authorize every theme app\' in Developer options.\n\nIf it is not there, please contact your ROM dev for missing commits!</string>
+    <string name="development_settings_disabled">Please enable development settings and enable  \'Force authorize every theme app\'!</string>
 
     <string name="information_activity_theme_improperly_setup">"%s" has no available resources for theming!</string>
 
@@ -342,13 +332,13 @@
     <string name="logcat_snackbar_text">Target application/overlay outdated or mismatched configuration selected&#8230;</string>
     <string name="logcat_dialog_title">LogChar Debug Report</string>
     <string name="logcat_dialog_copy_success">Successfully copied error log to clipboard!</string>
-    <string name="logcat_email_subject" translatable="false" formatted="false">
+    <string name="logcat_email_subject" formatted="false" translatable="false">
       %s: Theme Bug Report</string>
-    <string name="logcat_email_body" translatable="false" formatted="false">
+    <string name="logcat_email_body" formatted="false" translatable="false">
       Hey %s,\n\nI have an issue with %s, and would
       like to see if you could help me resolve this issue.
       </string>
-    <string name="logcat_attachment_body" translatable="false" formatted="false">
+    <string name="logcat_attachment_body" formatted="false" translatable="false">
       Theme Name:\n%s\n\nDevice:\n%s\n\nROM:\n%s\n\nSubstratum Version:\n%s\n\nTheme Version:\n%s\n\nTarget Package(s):\n%s\nReport:\n%s
       </string>
     <string name="logcat_send">Send</string>
@@ -371,14 +361,14 @@
     <string name="manager_no_overlays_title">no overlays installed</string>
     <string name="manager_no_overlays_text">compile one overlay to be able to use me!</string>
 
-    <string name="backup">Backup Card</string>
+    <string name="backup">Backup</string>
     <string name="backup_card_content">This function makes a copy of your currently enabled overlays
       list and places it in \"/storage/emulated/0/substratum/profiles/\" for safekeeping.
       </string>
     <string name="delete_dialog_okay">Delete</string>
     <string name="delete_dialog_title">Delete profile</string>
     <string name="delete_dialog_text" formatted="false">Are you sure you want to delete \"%s\"?</string>
-    <string name="restore">Restore Card</string>
+    <string name="restore">Restore</string>
     <string name="restore_card_content">When a profile is loaded, your current setup is completely
       wiped and \"restore theme\" would take on the updated changes.
       </string>

@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common;
@@ -33,14 +22,20 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.VectorDrawable;
-import android.preference.PreferenceManager;
 import android.util.Log;
-
 import org.apache.commons.io.IOUtils;
+import projekt.substratum.R;
+import projekt.substratum.Substratum;
+import projekt.substratum.common.analytics.PackageAnalytics;
+import projekt.substratum.common.commands.ElevatedCommands;
+import projekt.substratum.common.platform.SubstratumService;
+import projekt.substratum.common.platform.ThemeInterfacerService;
+import projekt.substratum.util.readers.ReadVariantPrioritizedColor;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -49,13 +44,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-
-import projekt.substratum.R;
-import projekt.substratum.common.analytics.PackageAnalytics;
-import projekt.substratum.common.commands.ElevatedCommands;
-import projekt.substratum.common.platform.SubstratumService;
-import projekt.substratum.common.platform.ThemeInterfacerService;
-import projekt.substratum.util.readers.ReadVariantPrioritizedColor;
 
 import static projekt.substratum.common.References.ENABLE_PACKAGE_LOGGING;
 import static projekt.substratum.common.References.INTERFACER_PACKAGE;
@@ -92,8 +80,7 @@ import static projekt.substratum.common.Systems.checkThemeInterfacer;
 import static projekt.substratum.common.Systems.isNewSamsungDeviceAndromeda;
 import static projekt.substratum.common.analytics.PackageAnalytics.PACKAGE_TAG;
 
-public enum Packages {
-    ;
+public class Packages {
 
     /**
      * Grab the installer ID on a given package
@@ -113,37 +100,21 @@ public enum Packages {
     }
 
     /**
-     * Returns whether the package is installed or not
-     *
-     * @param context     Context
-     * @param packageName Package name of the desired app to be checked
-     * @return True, if installed
-     */
-    public static boolean isPackageInstalled(Context context,
-                                             String packageName) {
-        return isPackageInstalled(context, packageName, true);
-    }
-
-    /**
      * Returns whether the package is installed or not, with an extra flag to check if enabled or
      * disabled
      *
      * @param context     Context
      * @param packageName Package name of the desired app to be checked
-     * @param enabled     Check whether it is enabled or frozen
      * @return True, if it fits all criteria above
      */
-    private static boolean isPackageInstalled(Context context,
-                                              String packageName,
-                                              boolean enabled) {
+    public static boolean isPackageInstalled(Context context,
+                                             String packageName) {
         try {
             PackageManager pm = context.getPackageManager();
             ApplicationInfo ai = pm.getApplicationInfo(packageName, 0);
             if (!new File(ai.sourceDir).exists()) return false;
             pm.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES);
-            if (enabled) return ai.enabled;
-            // if package doesn't exist, an Exception will be thrown, so return true in every case
-            return true;
+            return ai.enabled;
         } catch (Exception e) {
             return false;
         }
@@ -537,9 +508,7 @@ public enum Packages {
             android.content.res.Resources res = context.getPackageManager()
                     .getResourcesForApplication(packageName);
             int resourceId;
-            if ((PreferenceManager.
-                    getDefaultSharedPreferences(context).
-                    getInt("grid_style_cards_count", 1) != 1) && isThemesView) {
+            if ((Substratum.getPreferences().getInt("grid_style_cards_count", 1) != 1) && isThemesView) {
                 resourceId = res.getIdentifier(
                         packageName + ":drawable/" + heroImageGridResourceName, null, null);
                 if (resourceId == 0) resourceId = res.getIdentifier(
@@ -742,7 +711,7 @@ public enum Packages {
                             packageName
                     };
                     returnMap.put(appInfo.metaData.getString(metadataName), data);
-                    Log.d(PACKAGE_TAG, "Loaded Substratum Theme: [" + packageName + ']');
+                    Substratum.log(PACKAGE_TAG, "Loaded Substratum Theme: [" + packageName + ']');
                     if (ENABLE_PACKAGE_LOGGING)
                         PackageAnalytics.logPackageInfo(context, packageName);
                 } else {
@@ -845,6 +814,8 @@ public enum Packages {
                             "overlays/" + packageName + "/version")))) {
                 return Integer.valueOf(reader.readLine());
             } catch (IOException e) {
+                if (e instanceof FileNotFoundException)
+                    return 0;
                 e.printStackTrace();
             }
         } catch (PackageManager.NameNotFoundException e) {

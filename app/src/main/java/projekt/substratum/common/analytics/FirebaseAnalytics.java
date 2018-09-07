@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common.analytics;
@@ -22,16 +11,17 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.StrictMode;
-import android.util.Log;
-
+import androidx.annotation.NonNull;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.iid.FirebaseInstanceId;
+import projekt.substratum.Substratum;
+import projekt.substratum.common.References;
 
-import java.net.HttpURLConnection;
+import javax.net.ssl.HttpsURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -42,12 +32,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import projekt.substratum.common.References;
-
 import static projekt.substratum.common.Systems.checkPackageSupport;
 
-public enum FirebaseAnalytics {
-    ;
+public class FirebaseAnalytics {
 
     public static final String NAMES_PREFS = "names";
     public static final String PACKAGES_PREFS = "prefs";
@@ -57,10 +44,11 @@ public enum FirebaseAnalytics {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
         try {
-            HttpURLConnection connection = (HttpURLConnection) new URL(
+            HttpsURLConnection connection = (HttpsURLConnection) new URL(
                     "https://console.firebase.google.com/").openConnection();
             connection.setRequestMethod("HEAD");
-            return connection.getResponseCode() == HttpURLConnection.HTTP_OK;
+            connection.setConnectTimeout(5000);
+            return connection.getResponseCode() == HttpsURLConnection.HTTP_OK;
         } catch (Exception ignored) {
         }
         return false;
@@ -72,7 +60,7 @@ public enum FirebaseAnalytics {
             firebaseDatabase = FirebaseDatabase.getInstance();
             firebaseDatabase.setPersistenceEnabled(true);
             String token = FirebaseInstanceId.getInstance().getToken();
-            Log.d(References.SUBSTRATUM_LOG, "Firebase Registration Token: " + token);
+            Substratum.log(References.SUBSTRATUM_LOG, "Firebase Registration Token: " + token);
         }
         return firebaseDatabase.getReference();
     }
@@ -81,7 +69,7 @@ public enum FirebaseAnalytics {
         DatabaseReference database = getDatabaseReference();
         database.child("patchers").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 SharedPreferences.Editor editor = context
                         .getSharedPreferences(PACKAGES_PREFS, Context.MODE_PRIVATE).edit();
                 editor.clear();
@@ -105,15 +93,14 @@ public enum FirebaseAnalytics {
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
             }
         });
     }
 
     public static void withdrawAndromedaFingerprint(Context context,
                                                     int version) {
-        SharedPreferences prefs = context
-                .getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
         if (!prefs.contains("andromeda_exp_fp_" + version)) {
             SharedPreferences.Editor editor = prefs.edit();
             for (Map.Entry<String, ?> entry : prefs.getAll().entrySet()) {
@@ -126,7 +113,7 @@ public enum FirebaseAnalytics {
             database.child("andromeda-fp")
                     .addValueEventListener(new ValueEventListener() {
                         @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                             Object dataValue = dataSnapshot.child(String.valueOf(version))
                                     .getValue();
                             if (dataValue != null) {
@@ -135,7 +122,7 @@ public enum FirebaseAnalytics {
                         }
 
                         @Override
-                        public void onCancelled(DatabaseError databaseError) {
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
                         }
                     });
         }
@@ -143,8 +130,7 @@ public enum FirebaseAnalytics {
 
     public static void withdrawSungstratumFingerprint(Context context,
                                                       int version) {
-        SharedPreferences prefs = context
-                .getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
         if (!prefs.contains("sungstratum_exp_fp_" + version)) {
             SharedPreferences.Editor editor = prefs.edit();
             for (Map.Entry<String, ?> entry : prefs.getAll().entrySet()) {
@@ -157,7 +143,7 @@ public enum FirebaseAnalytics {
             database.child("sungstratum-fp")
                     .addValueEventListener(new ValueEventListener() {
                         @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                             Object dataValue = dataSnapshot.child(String.valueOf(version))
                                     .getValue();
                             if (dataValue != null) {
@@ -166,7 +152,7 @@ public enum FirebaseAnalytics {
                         }
 
                         @Override
-                        public void onCancelled(DatabaseError databaseError) {
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
                         }
                     });
         }

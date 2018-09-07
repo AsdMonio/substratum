@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.services.profiles;
@@ -29,10 +18,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
-import android.support.v4.app.NotificationCompat;
-import android.util.Log;
-
+import androidx.core.app.NotificationCompat;
 import projekt.substratum.R;
+import projekt.substratum.Substratum;
 import projekt.substratum.common.Broadcasts;
 
 import static projekt.substratum.common.systems.ProfileManager.SCHEDULED_PROFILE_TYPE_EXTRA;
@@ -56,7 +44,7 @@ public class ScheduledProfileReceiver extends BroadcastReceiver {
                 .POWER_SERVICE);
         if (powerManager != null) {
             if (!powerManager.isInteractive()) {
-                Log.d(TAG, extra + " profile will be applied.");
+                Substratum.log(TAG, extra + " profile will be applied.");
                 prefs.edit().remove(SCHEDULED_PROFILE_TYPE_EXTRA).apply();
                 Broadcasts.unregisterProfileScreenOffReceiver(context.getApplicationContext());
 
@@ -76,7 +64,7 @@ public class ScheduledProfileReceiver extends BroadcastReceiver {
                     jobScheduler.schedule(jobInfo);
                 }
             } else {
-                Log.d(TAG, extra + " profile will be applied after screen off...");
+                Substratum.log(TAG, extra + " profile will be applied after screen off...");
                 NotificationManager notificationManager =
                         (NotificationManager) context.getSystemService(Context
                                 .NOTIFICATION_SERVICE);

@@ -1,37 +1,25 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.adapters.activities;
 
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentStatePagerAdapter;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentStatePagerAdapter;
 import projekt.substratum.tabs.BootAnimations;
 import projekt.substratum.tabs.Fonts;
 import projekt.substratum.tabs.Overlays;
 import projekt.substratum.tabs.Sounds;
 import projekt.substratum.tabs.Wallpapers;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 import static projekt.substratum.common.Internal.SHUTDOWNANIMATION_INTENT;
 import static projekt.substratum.common.References.bootAnimationsFolder;

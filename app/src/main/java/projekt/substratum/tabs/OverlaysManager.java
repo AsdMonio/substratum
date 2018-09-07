@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.tabs;
@@ -32,23 +21,17 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.support.design.widget.BottomSheetBehavior;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.FileProvider;
-import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import java.io.File;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.List;
-
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.FileProvider;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.snackbar.Snackbar;
 import projekt.substratum.InformationActivity;
 import projekt.substratum.R;
 import projekt.substratum.Substratum;
@@ -64,6 +47,11 @@ import projekt.substratum.common.platform.ThemeManager;
 import projekt.substratum.util.compilers.SubstratumBuilder;
 import projekt.substratum.util.helpers.Root;
 import projekt.substratum.util.views.Lunchbar;
+
+import java.io.File;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 
 import static projekt.substratum.InformationActivity.currentShownLunchBar;
 import static projekt.substratum.common.Internal.COMPILE_ENABLE;
@@ -94,15 +82,13 @@ import static projekt.substratum.common.Resources.SYSTEMUI_QSTILES;
 import static projekt.substratum.common.Resources.SYSTEMUI_STATUSBARS;
 import static projekt.substratum.common.Resources.inNexusFilter;
 import static projekt.substratum.common.Systems.checkOMS;
-import static projekt.substratum.common.Systems.checkOreo;
 import static projekt.substratum.common.Systems.checkSubstratumService;
 import static projekt.substratum.common.Systems.checkThemeInterfacer;
 import static projekt.substratum.common.Systems.isNewSamsungDevice;
 import static projekt.substratum.common.Systems.isNewSamsungDeviceAndromeda;
 import static projekt.substratum.common.Systems.isSystemSecurityPatchNewer;
 
-enum OverlaysManager {
-    ;
+class OverlaysManager {
 
     private static final String TAG = "OverlaysManager";
 
@@ -131,7 +117,7 @@ enum OverlaysManager {
                 compile.execute("");
             }
             for (OverlaysItem overlay : overlays.currentInstance.checkedOverlays) {
-                Log.d("OverlayTargetPackageKiller", "Killing package : " + overlay
+                Substratum.log("OverlayTargetPackageKiller", "Killing package : " + overlay
                         .getPackageName());
                 overlays.activityManager.killBackgroundProcesses(overlay.getPackageName());
             }
@@ -190,7 +176,7 @@ enum OverlaysManager {
                     compile.execute("");
                 }
                 for (OverlaysItem overlay : overlays.currentInstance.checkedOverlays) {
-                    Log.d("OverlayTargetPackageKiller", "Killing package: " +
+                    Substratum.log("OverlayTargetPackageKiller", "Killing package: " +
                             overlay.getPackageName());
                     overlays.activityManager.killBackgroundProcesses(overlay.getPackageName());
                 }
@@ -234,7 +220,7 @@ enum OverlaysManager {
                                 overlays.currentInstance.checkedOverlays.get(i)
                                         .getFullOverlayParameters());
                         Intent uninstallIntent =
-                                new Intent(Intent.ACTION_DELETE, packageURI);
+                                new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageURI);
                         overlays.startActivity(uninstallIntent);
                     }
                 }
@@ -333,9 +319,9 @@ enum OverlaysManager {
     static class compileFunction extends AsyncTask<String, Integer, String> {
 
         private final WeakReference<Overlays> ref;
+        private final String state;
         private String currentPackageName = "";
         private String currentDialogOverlay;
-        private final String state;
 
         compileFunction(Overlays overlays, String state) {
             super();
@@ -347,7 +333,7 @@ enum OverlaysManager {
         protected void onPreExecute() {
             super.onPreExecute();
             Overlays overlays = ref.get();
-            Log.d(SUBSTRATUM_BUILDER,
+            Substratum.log(SUBSTRATUM_BUILDER,
                     "Substratum is proceeding with your actions and is now actively running...");
             if (overlays != null) {
                 Context context = overlays.getActivity();
@@ -597,7 +583,7 @@ enum OverlaysManager {
                         !Systems.isNewSamsungDevice() &&
                                 Substratum.needToWaitInstall() &&
                                 Systems.checkOMS(context) &&
-                                !Systems.checkP();
+                                !Systems.IS_PIE;
 
                 if (needToWait) {
                     Substratum.getInstance().registerFinishReceiver();
@@ -775,9 +761,9 @@ enum OverlaysManager {
                                 // Type 1a
                                 if (checked.isVariantChosen1) {
                                     type1a = checked.getSelectedVariantName();
-                                    Log.d(SUBSTRATUM_BUILDER, "You have selected variant file \"" +
+                                    Substratum.log(SUBSTRATUM_BUILDER, "You have selected variant file \"" +
                                             checked.getSelectedVariantName() + '"');
-                                    Log.d(SUBSTRATUM_BUILDER, "Moving variant file to: " +
+                                    Substratum.log(SUBSTRATUM_BUILDER, "Moving variant file to: " +
                                             workingDirectory + parsedSuffix + "/values/type1a.xml");
 
                                     String toCopy =
@@ -802,9 +788,9 @@ enum OverlaysManager {
                                 // Type 1b
                                 if (checked.isVariantChosen2) {
                                     type1b = checked.getSelectedVariantName2();
-                                    Log.d(SUBSTRATUM_BUILDER, "You have selected variant file \"" +
+                                    Substratum.log(SUBSTRATUM_BUILDER, "You have selected variant file \"" +
                                             checked.getSelectedVariantName2() + '"');
-                                    Log.d(SUBSTRATUM_BUILDER, "Moving variant file to: " +
+                                    Substratum.log(SUBSTRATUM_BUILDER, "Moving variant file to: " +
                                             workingDirectory + parsedSuffix + "/values/type1b.xml");
 
                                     String toCopy =
@@ -828,9 +814,9 @@ enum OverlaysManager {
                                 // Type 1c
                                 if (checked.isVariantChosen3) {
                                     type1c = checked.getSelectedVariantName3();
-                                    Log.d(SUBSTRATUM_BUILDER, "You have selected variant file \"" +
+                                    Substratum.log(SUBSTRATUM_BUILDER, "You have selected variant file \"" +
                                             checked.getSelectedVariantName3() + '"');
-                                    Log.d(SUBSTRATUM_BUILDER, "Moving variant file to: " +
+                                    Substratum.log(SUBSTRATUM_BUILDER, "Moving variant file to: " +
                                             workingDirectory + parsedSuffix + "/values/type1c.xml");
 
                                     String toCopy =
@@ -852,7 +838,7 @@ enum OverlaysManager {
                                             overlays.themeCipher);
                                 }
 
-                                String packageName =
+                                String variantSection =
                                         (checked.isVariantChosen1 ?
                                                 checked.getSelectedVariantName() : "") +
                                                 (overlays.currentInstance.checkedOverlays
@@ -865,6 +851,11 @@ enum OverlaysManager {
                                                         overlays.currentInstance.checkedOverlays
                                                                 .get(i)
                                                                 .getSelectedVariantName3() : "") +
+                                                (overlays.currentInstance.checkedOverlays
+                                                        .get(i).isVariantChosen4 ?
+                                                        overlays.currentInstance.checkedOverlays
+                                                                .get(i)
+                                                                .getSelectedVariantName4() : "") +
                                                 (overlays.currentInstance.checkedOverlays
                                                         .get(i).isVariantChosen5 ?
                                                         overlays.currentInstance.checkedOverlays
@@ -889,11 +880,6 @@ enum OverlaysManager {
                                             overlays.themeCipher);
                                 }
                                 if (checked.isVariantChosen4) {
-                                    packageName = (packageName + overlays.currentInstance
-                                            .checkedOverlays.get(i)
-                                            .getSelectedVariantName4()).replaceAll("\\s+", "")
-                                            .replaceAll("[^a-zA-Z0-9]+", "");
-
                                     // Copy over the type2 assets
                                     type2 = checked.getSelectedVariantName4();
                                     String type2folder = "/type2_" + type2;
@@ -908,7 +894,7 @@ enum OverlaysManager {
                                             overlays.themeCipher);
 
                                     // Let's get started
-                                    Log.d(SUBSTRATUM_BUILDER, "Currently processing package" +
+                                    Substratum.log(SUBSTRATUM_BUILDER, "Currently processing package" +
                                             " \"" + checked.getFullOverlayParameters() + "\"...");
 
                                     overlays.compileInstance = new SubstratumBuilder();
@@ -916,7 +902,7 @@ enum OverlaysManager {
                                             context,
                                             currentOverlay,
                                             overlays.themeName,
-                                            packageName,
+                                            variantSection,
                                             checked.getSelectedVariantName4(),
                                             !sUrl[0].isEmpty() ? sUrl[0] : null,
                                             overlays.themeVersion,
@@ -933,14 +919,14 @@ enum OverlaysManager {
                                             false
                                     );
                                 } else {
-                                    Log.d(SUBSTRATUM_BUILDER, "Currently processing package" +
+                                    Substratum.log(SUBSTRATUM_BUILDER, "Currently processing package" +
                                             " \"" + checked.getFullOverlayParameters() + "\"...");
                                     overlays.compileInstance = new SubstratumBuilder();
                                     overlays.compileInstance.beginAction(
                                             context,
                                             currentOverlay,
                                             overlays.themeName,
-                                            packageName,
+                                            variantSection,
                                             null,
                                             !sUrl[0].isEmpty() ? sUrl[0] : null,
                                             overlays.themeVersion,
@@ -1000,7 +986,7 @@ enum OverlaysManager {
                                     }
                                 }
                             } else {
-                                Log.d(SUBSTRATUM_BUILDER, "Currently processing package" +
+                                Substratum.log(SUBSTRATUM_BUILDER, "Currently processing package" +
                                         " \"" + currentOverlay + '.' + themeNameParsed +
                                         "\"...");
                                 overlays.compileInstance = new SubstratumBuilder();
@@ -1333,7 +1319,7 @@ enum OverlaysManager {
             Overlays overlays = ref.get();
             Context context = refContext.get();
             if ((context != null) && (overlays != null)) {
-                if (checkOreo() &&
+                if (Systems.IS_OREO &&
                         isSystemSecurityPatchNewer(SECURITY_UPDATE_WARN_AFTER) &&
                         !checkSubstratumService(context)) {
                     if (!overlays.prefs.getBoolean("new_stock_dismissal", false)) {
@@ -1464,9 +1450,7 @@ enum OverlaysManager {
                                     o.substring(o.lastIndexOf('/') + 1, o.lastIndexOf('-'));
                             packages.add(packageName);
                             if (!Systems.isNewSamsungDevice() &&
-                                    !Systems.checkP() &&
-                                    (checkThemeInterfacer(context) &&
-                                            !Systems.isBinderInterfacer(context)) ||
+                                    checkThemeInterfacer(context) ||
                                     Systems.checkAndromeda(context)) {
                                 // Wait until the overlays to fully install so on compile enable
                                 // mode it can be enabled after.

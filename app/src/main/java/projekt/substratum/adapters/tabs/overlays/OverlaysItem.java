@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.adapters.tabs.overlays;
@@ -22,14 +11,13 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.graphics.drawable.Drawable;
 import android.widget.SpinnerAdapter;
+import projekt.substratum.common.Packages;
+import projekt.substratum.common.Systems;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import projekt.substratum.common.Packages;
-import projekt.substratum.common.Systems;
 
 import static projekt.substratum.common.Packages.getLiveOverlayVersion;
 import static projekt.substratum.common.Packages.getOverlayMetadataInt;
@@ -46,12 +34,6 @@ import static projekt.substratum.common.Resources.SYSTEMUI_STATUSBARS;
 public class OverlaysItem implements Serializable {
 
     public final String attention;
-    public boolean isVariantChosen;
-    public boolean isVariantChosen1;
-    public boolean isVariantChosen2;
-    public boolean isVariantChosen3;
-    public boolean isVariantChosen4;
-    public boolean isVariantChosen5;
     public final boolean variantMode;
     final String versionName;
     private final int overlayVersion;
@@ -65,6 +47,12 @@ public class OverlaysItem implements Serializable {
     private final Context context;
     private final Drawable appIcon;
     private final String name;
+    public boolean isVariantChosen;
+    public boolean isVariantChosen1;
+    public boolean isVariantChosen2;
+    public boolean isVariantChosen3;
+    public boolean isVariantChosen4;
+    public boolean isVariantChosen5;
     private String targetVersion;
     private boolean isSelected;
     private int spinnerSelection;

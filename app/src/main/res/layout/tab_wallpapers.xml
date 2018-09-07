@@ -1,25 +1,14 @@
 <!--
-  ~ Copyright (c) 2016-2017 Projekt Substratum
+  ~ Copyright (c) 2016-2018 Projekt Substratum
   ~ This file is part of Substratum.
   ~
-  ~ Substratum is free software: you can redistribute it and/or modify
-  ~ it under the terms of the GNU General Public License as published by
-  ~ the Free Software Foundation, either version 3 of the License, or
-  ~ (at your option) any later version.
-  ~
-  ~ Substratum is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  ~ GNU General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU General Public License
-  ~ along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+  ~ SPDX-License-Identifier: GPL-3.0-Or-Later
   -->
 
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <android.support.design.widget.CoordinatorLayout
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/wallpaper_bg_background"
@@ -90,12 +79,12 @@
             android:indeterminate="true"
             android:paddingTop="50dp" />
 
-        <android.support.v4.widget.SwipeRefreshLayout
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/swipeRefreshLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content">
 
-            <android.support.v7.widget.RecyclerView
+            <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/wallpaperRecyclerView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -104,7 +93,7 @@
                 android:paddingBottom="90dp"
                 android:scrollbars="vertical" />
 
-        </android.support.v4.widget.SwipeRefreshLayout>
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    </android.support.design.widget.CoordinatorLayout>
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
 </layout>

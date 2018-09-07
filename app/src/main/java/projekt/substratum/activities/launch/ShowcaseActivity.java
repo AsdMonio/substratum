@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.activities.launch;
@@ -24,31 +13,24 @@ import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
-import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.design.widget.NavigationView;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
-
-import java.io.File;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.databinding.DataBindingUtil;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
+import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.snackbar.Snackbar;
 import projekt.substratum.R;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Systems;
@@ -59,6 +41,12 @@ import projekt.substratum.util.helpers.LocaleHelper;
 import projekt.substratum.util.helpers.MD5;
 import projekt.substratum.util.readers.ReadShowcaseTabsFile;
 import projekt.substratum.util.views.Lunchbar;
+
+import java.io.File;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static projekt.substratum.common.Internal.SHOWCASE_CACHE;
 
@@ -117,6 +105,8 @@ public class ShowcaseActivity extends AppCompatActivity {
                 launchShowcaseInfo();
                 return true;
             case R.id.filter:
+                if (drawerLayout.getDrawerLockMode(navigationView) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+                    return true;
                 if (drawerLayout.isDrawerOpen(navigationView)) {
                     drawerLayout.closeDrawer(navigationView);
                 } else {
@@ -180,6 +170,8 @@ public class ShowcaseActivity extends AppCompatActivity {
             if (!made)
                 Log.e(TAG, "Could not make showcase directory...");
         }
+
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
         refreshLayout();
     }
 
@@ -281,6 +273,7 @@ public class ShowcaseActivity extends AppCompatActivity {
                 );
 
                 new Handler().postDelayed(() -> {
+                    activity.drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED);
                     activity.drawerLayout.openDrawer(activity.navigationView);
                     activity.navigationView.getMenu()
                             .getItem(0)

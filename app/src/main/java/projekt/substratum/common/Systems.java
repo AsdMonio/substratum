@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common;
@@ -28,9 +17,14 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.util.Log;
+import projekt.substratum.BuildConfig;
+import projekt.substratum.Substratum;
+import projekt.substratum.common.platform.SubstratumService;
+import projekt.substratum.util.helpers.FileDownloader;
+import projekt.substratum.util.helpers.Root;
+import projekt.substratum.util.readers.ReadSupportedROMsFile;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -44,12 +38,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
-import projekt.substratum.BuildConfig;
-import projekt.substratum.common.platform.SubstratumService;
-import projekt.substratum.util.helpers.FileDownloader;
-import projekt.substratum.util.helpers.Root;
-import projekt.substratum.util.readers.ReadSupportedROMsFile;
 
 import static projekt.substratum.common.References.ANDROMEDA_PACKAGE;
 import static projekt.substratum.common.References.BYPASS_SYSTEM_VERSION_CHECK;
@@ -70,15 +58,21 @@ import static projekt.substratum.common.References.isNetworkAvailable;
 import static projekt.substratum.common.References.isServiceRunning;
 import static projekt.substratum.common.References.spreadYourWingsAndFly;
 
-public enum Systems {
-    ;
+public class Systems {
 
+    public static final boolean IS_PIE = Build.VERSION.SDK_INT == Build.VERSION_CODES.P;
+    public static final boolean IS_OREO = Build.VERSION.SDK_INT == Build.VERSION_CODES.O ||
+            Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1;
+    public static final boolean IS_NOUGAT = Build.VERSION.SDK_INT == Build.VERSION_CODES.N ||
+            Build.VERSION.SDK_INT == Build.VERSION_CODES.N_MR1;
+
+    static Boolean checkPackageSupported;
+    static SharedPreferences prefs = Substratum.getPreferences();
     /**
      * Cached boolean to find if system
      * passes all cases of Samsung checks
      */
     private static Boolean isSamsungDevice = null;
-    static Boolean checkPackageSupported;
 
     /**
      * This method is used to determine whether there the system is initiated with OMS
@@ -88,7 +82,6 @@ public enum Systems {
     public static Boolean checkOMS(Context context) {
         if (context == null) return true; // Safe to assume that window refreshes only on OMS
         if (!BYPASS_SYSTEM_VERSION_CHECK) {
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
             if (!prefs.contains("oms_state")) {
                 setAndCheckOMS(context);
             }
@@ -140,14 +133,22 @@ public enum Systems {
     public static int checkThemeSystemModule(Context context,
                                              boolean firstLaunch) {
         if (context != null) {
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
             if (!firstLaunch &&
                     prefs.contains("current_theme_mode") &&
                     prefs.getInt("current_theme_mode", NO_THEME_ENGINE) != NO_THEME_ENGINE) {
                 return prefs.getInt("current_theme_mode", NO_THEME_ENGINE);
             }
 
-            if (checkOreo()) {
+            if (IS_PIE) {
+                if (checkSubstratumService(context)) {
+                    // SS mode
+                    prefs.edit().putInt(
+                            "current_theme_mode",
+                            OVERLAY_MANAGER_SERVICE_O_UNROOTED
+                    ).apply();
+                    return OVERLAY_MANAGER_SERVICE_O_UNROOTED;
+                }
+            } else if (IS_OREO) {
                 if (isAndromedaDevice(context)) {
                     // Andromeda mode
                     prefs.edit().putInt(
@@ -170,7 +171,7 @@ public enum Systems {
                     ).apply();
                     return OVERLAY_MANAGER_SERVICE_O_ROOTED;
                 }
-            } else if (checkNougat()) {
+            } else if (IS_NOUGAT) {
                 if (isBinderInterfacer(context)) {
                     // Interfacer mode
                     prefs.edit().putInt(
@@ -199,41 +200,11 @@ public enum Systems {
     }
 
     /**
-     * Check if the device is P based
-     *
-     * @return True, if yes.
-     */
-    public static Boolean checkP() {
-        return (Build.VERSION.SDK_INT == Build.VERSION_CODES.P);
-    }
-
-    /**
-     * Check if the device is Oreo based
-     *
-     * @return True, if yes.
-     */
-    public static Boolean checkOreo() {
-        return (Build.VERSION.SDK_INT == Build.VERSION_CODES.O) ||
-                (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1);
-    }
-
-    /**
-     * Check if the device is Nougat based
-     *
-     * @return True, if yes.
-     */
-    private static Boolean checkNougat() {
-        return (Build.VERSION.SDK_INT == Build.VERSION_CODES.N) ||
-                (Build.VERSION.SDK_INT == Build.VERSION_CODES.N_MR1);
-    }
-
-    /**
      * Set a retained property to refer to rather than constantly calling the OMS state
      *
      * @param context If you haven't gotten this by now, better start reading Android docs
      */
     public static void setAndCheckOMS(Context context) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         prefs.edit().remove("oms_state").apply();
         try {
             boolean foundOms = false;
@@ -244,37 +215,37 @@ public enum Systems {
                 } else if (sonyCheck == null || sonyCheck.length() == 0) {
                     Boolean isOMSRunning = isServiceRunning(IOverlayManager.class,
                             context.getApplicationContext());
-                    if (isOMSRunning || checkOreo()) {
-                        Log.d(SUBSTRATUM_LOG,
+                    if (isOMSRunning || IS_OREO || IS_PIE) {
+                        Substratum.log(SUBSTRATUM_LOG,
                                 "This device fully supports the Overlay Manager Service...");
                         foundOms = true;
                     } else {
                         String out = Root.runCommand("cmd overlay").split("\n")[0];
                         if ("The overlay manager has already been initialized.".equals(out) ||
                                 "Overlay manager (overlay) commands:".equals(out)) {
-                            Log.d(SUBSTRATUM_LOG,
+                            Substratum.log(SUBSTRATUM_LOG,
                                     "This device fully supports the Overlay Manager Service...");
                             foundOms = true;
                         }
                     }
                 } else {
-                    Log.d(SUBSTRATUM_LOG, "Sony Mobile Overlay Manager Service found, " +
+                    Substratum.log(SUBSTRATUM_LOG, "Sony Mobile Overlay Manager Service found, " +
                             "falling back to RRO2 for vendor bypass...");
                 }
             }
 
             if (foundOms && !isSamsungDevice(context)) {
                 prefs.edit().putBoolean("oms_state", true).apply();
-                Log.d(SUBSTRATUM_LOG, "Initializing Substratum with Dynamic Overlay / " +
+                Substratum.log(SUBSTRATUM_LOG, "Initializing Substratum with Dynamic Overlay / " +
                         "Overlay Manager Service support!");
             } else {
                 prefs.edit().putBoolean("oms_state", false).apply();
-                Log.d(SUBSTRATUM_LOG,
+                Substratum.log(SUBSTRATUM_LOG,
                         "Initializing Substratum with Runtime Resource Overlay support!");
             }
         } catch (Exception e) {
             prefs.edit().putBoolean("oms_state", false).apply();
-            Log.d(SUBSTRATUM_LOG, "Initializing Substratum with Runtime Resource Overlay support!");
+            Substratum.log(SUBSTRATUM_LOG, "Initializing Substratum with Runtime Resource Overlay support!");
         }
     }
 
@@ -295,13 +266,10 @@ public enum Systems {
 
     /**
      * Set a retained property to refer to rather than constantly calling the SS state
-     *
-     * @param context If you haven't gotten this by now, better start reading Android docs
      */
-    public static void setAndCheckSubstratumService(Context context) {
+    public static void setAndCheckSubstratumService() {
         StringBuilder check = References.runShellCommand("cmd -l");
         Boolean present = check != null && check.toString().contains("substratum");
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         prefs.edit().putBoolean("substratum_service_present", false).apply();
         if (present) {
             prefs.edit().putBoolean("substratum_service_present", true).apply();
@@ -315,9 +283,8 @@ public enum Systems {
      */
     public static boolean checkSubstratumService(Context context) {
         if (context == null) return true; // Safe to assume that window refreshes only on OMS
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         if (!prefs.contains("substratum_service_present")) {
-            setAndCheckSubstratumService(context);
+            setAndCheckSubstratumService();
         }
         return prefs.getBoolean("substratum_service_present", false);
     }
@@ -339,8 +306,7 @@ public enum Systems {
             return false;
         }
 
-        SharedPreferences prefs =
-                context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
         String fingerprint = prefs.getString("andromeda_fp", "o");
         String expFingerprint = prefs.getString(
                 "andromeda_exp_fp_" + Packages.getAppVersionCode(context, ANDROMEDA_PACKAGE), "0");
@@ -393,8 +359,7 @@ public enum Systems {
         if (!isSamsungDevice(context)) return false;
         if (isNewSamsungDeviceAndromeda(context)) return true;
 
-        SharedPreferences prefs =
-                context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
 
         boolean debuggingValue = prefs.getBoolean("sungstratum_debug", true);
         boolean installer = prefs.getBoolean("sungstratum_installer", false);
@@ -446,7 +411,6 @@ public enum Systems {
      * @return True, if the device can utilize both sungstratum + andromeda mode on Oreo onwards
      */
     public static boolean isNewSamsungDeviceAndromeda(Context context) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean sungstromeda = prefs.getBoolean("sungstromeda_mode", true);
         return sungstromeda && isNewSamsungDevice() && checkAndromeda(context);
     }
@@ -550,9 +514,8 @@ public enum Systems {
      * @return True, if clean
      */
     public static Boolean checkROMVersion(Context context) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         if (!prefs.contains("rom_build_date")) {
-            setROMVersion(context, false);
+            setROMVersion(false);
         }
         if ((isSamsungDevice(context) || isNewSamsungDevice()) &&
                 !prefs.contains("samsung_migration_key")) {
@@ -566,12 +529,9 @@ public enum Systems {
     /**
      * Retain the ROM version in the Shared Preferences of the app
      *
-     * @param context CONTEXT!!!
-     * @param force   Do not dynamically set it, instead, force!
+     * @param force Do not dynamically set it, instead, force!
      */
-    public static void setROMVersion(Context context,
-                                     boolean force) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+    public static void setROMVersion(boolean force) {
         if (!prefs.contains("rom_build_date") || force) {
             String prop = getProp("ro.build.date.utc");
             prefs.edit().putInt("rom_build_date",
@@ -712,11 +672,11 @@ public enum Systems {
                             if (current.contains(".")) {
                                 current = current.split("\\.")[1];
                             }
-                            Log.d(SUBSTRATUM_LOG, "Supported ROM: " + current);
+                            Substratum.log(SUBSTRATUM_LOG, "Supported ROM: " + current);
                             supportedRom = current;
                             supported = true;
                         } else {
-                            Log.d(SUBSTRATUM_LOG, "Supported ROM: " + value);
+                            Substratum.log(SUBSTRATUM_LOG, "Supported ROM: " + value);
                             supportedRom = value;
                             supported = true;
                         }
@@ -748,12 +708,12 @@ public enum Systems {
                                     if (current.contains(".")) {
                                         current = current.split("\\.")[1];
                                     }
-                                    Log.d(SUBSTRATUM_LOG,
+                                    Substratum.log(SUBSTRATUM_LOG,
                                             "Supported ROM (1): " + current);
                                     supportedRom = current;
                                     supported = true;
                                 } else {
-                                    Log.d(SUBSTRATUM_LOG,
+                                    Substratum.log(SUBSTRATUM_LOG,
                                             "Supported ROM (1): " + value);
                                     supportedRom = value;
                                     supported = true;

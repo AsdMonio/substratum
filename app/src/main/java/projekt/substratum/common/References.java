@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common;
@@ -49,8 +38,6 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.os.StrictMode;
-import android.preference.PreferenceManager;
-import android.support.annotation.Nullable;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -64,6 +51,18 @@ import android.widget.SpinnerAdapter;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
+import androidx.annotation.Nullable;
+import projekt.substratum.BuildConfig;
+import projekt.substratum.InformationActivity;
+import projekt.substratum.LauncherActivity;
+import projekt.substratum.MainActivity;
+import projekt.substratum.R;
+import projekt.substratum.Substratum;
+import projekt.substratum.activities.shortcuts.AppShortcutLaunch;
+import projekt.substratum.common.analytics.FirebaseAnalytics;
+import projekt.substratum.services.profiles.ScheduledProfileReceiver;
+import projekt.substratum.util.helpers.BinaryInstaller;
+import projekt.substratum.util.helpers.TranslatorParser;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -88,29 +87,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-import projekt.substratum.InformationActivity;
-import projekt.substratum.LauncherActivity;
-import projekt.substratum.MainActivity;
-import projekt.substratum.R;
-import projekt.substratum.Substratum;
-import projekt.substratum.activities.shortcuts.AppShortcutLaunch;
-import projekt.substratum.common.analytics.FirebaseAnalytics;
-import projekt.substratum.services.profiles.ScheduledProfileReceiver;
-import projekt.substratum.util.helpers.BinaryInstaller;
-import projekt.substratum.util.helpers.TranslatorParser;
-
 import static android.content.Context.CLIPBOARD_SERVICE;
 import static projekt.substratum.common.Internal.BYTE_ACCESS_RATE;
 import static projekt.substratum.common.Systems.checkPackageRegex;
 
-public enum References {
-    ;
+public class References {
 
     public static final boolean ENABLE_ROOT_CHECK = true; // Force the app to run without root
     public static final boolean ENABLE_EXTRAS_DIALOG = false; // Show a dialog when applying extras
     public static final boolean ENABLE_AAPT_OUTPUT = false; // WARNING, DEVELOPERS - BREAKS COMPILE
     public static final boolean ENABLE_PACKAGE_LOGGING = false; // Show time/date/place of install
-    public static final boolean ENABLE_DIRECT_ASSETS_LOGGING = true; // Self explanatory
+    public static final boolean ENABLE_DIRECT_ASSETS_LOGGING = BuildConfig.ENHANCED_LOGGING; // Self explanatory
     public static final boolean BYPASS_SYSTEM_VERSION_CHECK = false; // For developer previews only!
     public static final boolean BYPASS_SUBSTRATUM_BUILDER_DELETION = false; // Do not delete cache?
     @SuppressWarnings("WeakerAccess")
@@ -245,8 +232,6 @@ public enum References {
     public static final String metadataVersion = "Substratum_Plugin";
     // Validate with logs
     public static final boolean VALIDATE_WITH_LOGS = false;
-    // Control the animation duration
-    private static final int FADE_FROM_GRAYSCALE_TO_COLOR_DURATION = 1250;
     // Special permission for Samsung devices
     public static final String SAMSUNG_OVERLAY_PERMISSION =
             "com.samsung.android.permission.SAMSUNG_OVERLAY_COMPONENT";
@@ -256,6 +241,8 @@ public enum References {
     static final String heroImageMainResourceName = "heroimage_banner";
     // Specific intents Substratum should be listening to
     static final String APP_CRASHED = "projekt.substratum.APP_CRASHED";
+    // Control the animation duration
+    private static final int FADE_FROM_GRAYSCALE_TO_COLOR_DURATION = 1250;
     // Localized variables shared amongst common resources
     static ScheduledProfileReceiver scheduledProfileReceiver;
     // These values control the dynamic certification of substratum
@@ -463,7 +450,7 @@ public enum References {
                 if (shortcutManager != null) {
                     shortcutManager.setDynamicShortcuts(Collections.singletonList(shortcut));
                 }
-                Log.d(SUBSTRATUM_LOG, "Successfully added dynamic app shortcut!");
+                Substratum.log(SUBSTRATUM_LOG, "Successfully added dynamic app shortcut!");
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -481,7 +468,7 @@ public enum References {
             if (shortcutManager != null) {
                 shortcutManager.removeAllDynamicShortcuts();
             }
-            Log.d(SUBSTRATUM_LOG, "Successfully removed all dynamic app shortcuts!");
+            Substratum.log(SUBSTRATUM_LOG, "Successfully removed all dynamic app shortcuts!");
         }
     }
 
@@ -584,8 +571,7 @@ public enum References {
      * @param context Context
      */
     public static void loadDefaultConfig(Context context) {
-        SharedPreferences.Editor editor =
-                PreferenceManager.getDefaultSharedPreferences(context).edit();
+        SharedPreferences.Editor editor = Substratum.getPreferences().edit();
         SharedPreferences.Editor editor2 =
                 context.getSharedPreferences("base_variant", Context.MODE_PRIVATE).edit();
         editor.putBoolean("show_app_icon", true);
@@ -738,8 +724,7 @@ public enum References {
         if (uncertified != null && !override) {
             return uncertified;
         }
-        SharedPreferences prefs = context
-                .getSharedPreferences(FirebaseAnalytics.PACKAGES_PREFS, Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences(FirebaseAnalytics.PACKAGES_PREFS, Context.MODE_PRIVATE);
         SimpleDateFormat dateFormat = new SimpleDateFormat("ddMMyyyy", Locale.US);
         String date = dateFormat.format(new Date());
         if (prefs.contains(date)) {
@@ -803,7 +788,7 @@ public enum References {
             File logcharFolder = new File(Environment.getExternalStorageDirectory() +
                     File.separator + "substratum" + File.separator + "LogCharReports");
             if (!logcharFolder.exists() && logcharFolder.mkdirs()) {
-                Log.d("LogChar Utility", "Created LogChar directory!");
+                Substratum.log("LogChar Utility", "Created LogChar directory!");
             }
 
             BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(
@@ -844,8 +829,7 @@ public enum References {
         Bitmap b = ((BitmapDrawable) image).getBitmap();
 
         int screenWidth = Resources.getSystem().getDisplayMetrics().widthPixels;
-        int gridCount = PreferenceManager.getDefaultSharedPreferences(
-                Substratum.getInstance()).getInt("grid_style_cards_count", 1);
+        int gridCount = Substratum.getPreferences().getInt("grid_style_cards_count", 1);
         float targetWidthSize = (float) screenWidth / gridCount;
 
         int width = image.getIntrinsicWidth();

@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.ui.util;
@@ -21,15 +10,13 @@ package projekt.substratum.ui.util;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
-import android.databinding.BindingAdapter;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.support.design.widget.Snackbar;
 import android.view.View;
 import android.widget.ImageView;
-
+import androidx.databinding.BindingAdapter;
 import com.bumptech.glide.Glide;
-
+import com.google.android.material.snackbar.Snackbar;
 import projekt.substratum.R;
 import projekt.substratum.common.Internal;
 import projekt.substratum.util.views.Lunchbar;
@@ -42,7 +29,7 @@ public class ViewBindingHelpers {
     @BindingAdapter("imageUrl")
     public static void imageUrl(ImageView imageView, String url) {
         Glide.with(imageView.getContext())
-                .load(url)
+                .load(url.replace("http://", "https://"))
                 .apply(centerCropTransform())
                 .transition(withCrossFade())
                 .into(imageView);

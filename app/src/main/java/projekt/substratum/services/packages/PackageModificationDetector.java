@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.services.packages;
@@ -29,23 +18,22 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
-
-import java.util.HashSet;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ThreadLocalRandom;
-
+import androidx.core.app.NotificationCompat;
 import projekt.substratum.MainActivity;
 import projekt.substratum.R;
+import projekt.substratum.Substratum;
 import projekt.substratum.activities.shortcuts.AppShortcutLaunch;
 import projekt.substratum.common.Broadcasts;
 import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Systems;
 import projekt.substratum.services.notification.UnsupportedThemeReceiver;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static projekt.substratum.common.Internal.THEME_PID;
 import static projekt.substratum.common.References.ANDROMEDA_PACKAGE;
@@ -122,7 +110,7 @@ public class PackageModificationDetector extends BroadcastReceiver {
         boolean replacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
 
         // Let's add it to the list of installed themes on shared prefs
-        SharedPreferences mainPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences mainPrefs = Substratum.getPreferences();
         Set<String> installedThemes =
                 mainPrefs.getStringSet("installed_themes", new HashSet<>());
         Set<String> installedSorted = new TreeSet<>();
@@ -238,7 +226,7 @@ public class PackageModificationDetector extends BroadcastReceiver {
 
         if (replacing) {
             // We need to check if this is a new install or not
-            Log.d(TAG, '\'' + packageName1 + "' has been updated.");
+            Substratum.log(TAG, '\'' + packageName1 + "' has been updated.");
             NotificationManager notificationManager = (NotificationManager) context
                     .getSystemService(Context.NOTIFICATION_SERVICE);
             NotificationCompat.Builder builder = new

@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.tabs;
@@ -23,19 +12,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.databinding.DataBindingUtil;
 import android.media.MediaPlayer;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.widget.NestedScrollView;
-import android.support.v7.widget.DefaultItemAnimator;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -45,6 +24,24 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
+import androidx.annotation.NonNull;
+import androidx.core.widget.NestedScrollView;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.DefaultItemAnimator;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.snackbar.Snackbar;
+import projekt.substratum.R;
+import projekt.substratum.Substratum;
+import projekt.substratum.adapters.tabs.sounds.SoundsAdapter;
+import projekt.substratum.adapters.tabs.sounds.SoundsItem;
+import projekt.substratum.common.commands.FileOperations;
+import projekt.substratum.databinding.TabSoundsBinding;
+import projekt.substratum.util.tabs.SoundUtils;
+import projekt.substratum.util.views.Lunchbar;
+import projekt.substratum.util.views.RecyclerItemClickListener;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -60,15 +57,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
-import projekt.substratum.R;
-import projekt.substratum.adapters.tabs.sounds.SoundsAdapter;
-import projekt.substratum.adapters.tabs.sounds.SoundsItem;
-import projekt.substratum.common.commands.FileOperations;
-import projekt.substratum.databinding.TabSoundsBinding;
-import projekt.substratum.util.tabs.SoundUtils;
-import projekt.substratum.util.views.Lunchbar;
-import projekt.substratum.util.views.RecyclerItemClickListener;
 
 import static projekt.substratum.InformationActivity.currentShownLunchBar;
 import static projekt.substratum.common.Internal.BYTE_ACCESS_RATE;
@@ -99,7 +87,7 @@ public class Sounds extends Fragment {
     private String themePid;
     private ArrayList<SoundsItem> wordList;
     private int previousPosition;
-    private SharedPreferences prefs;
+    private SharedPreferences prefs = Substratum.getPreferences();
     private AsyncTask current;
     private boolean paused;
     private JobReceiver jobReceiver;
@@ -138,7 +126,6 @@ public class Sounds extends Fragment {
             return null;
         }
 
-        prefs = PreferenceManager.getDefaultSharedPreferences(context);
         progressBar.setVisibility(View.GONE);
         errorLoadingPack.setVisibility(View.GONE);
 
@@ -407,18 +394,18 @@ public class Sounds extends Fragment {
                     final File cacheDirectory = new File(sounds.context.getCacheDir(),
                             SOUNDS_CACHE);
                     if (!cacheDirectory.exists() && cacheDirectory.mkdirs()) {
-                        Log.d(TAG, "Sounds folder created");
+                        Substratum.log(TAG, "Sounds folder created");
                     }
                     final File cacheDirectory2 = new File(sounds.context.getCacheDir(),
                             SOUNDS_PREVIEW_CACHE);
                     if (!cacheDirectory2.exists() && cacheDirectory2.mkdirs()) {
-                        Log.d(TAG, "Sounds work folder created");
+                        Substratum.log(TAG, "Sounds work folder created");
                     } else {
                         FileOperations.delete(sounds.context,
                                 sounds.context.getCacheDir().getAbsolutePath() +
                                         SOUNDS_PREVIEW_CACHE);
                         final boolean created = cacheDirectory2.mkdirs();
-                        if (created) Log.d(TAG, "Sounds folder recreated");
+                        if (created) Substratum.log(TAG, "Sounds folder recreated");
                     }
 
                     // Copy the sounds.zip from assets/sounds of the theme's assets

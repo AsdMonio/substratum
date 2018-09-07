@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.adapters.fragments.themes;
@@ -22,31 +11,30 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.databinding.DataBindingUtil;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Vibrator;
-import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import java.util.List;
-
+import androidx.annotation.NonNull;
+import androidx.databinding.DataBindingUtil;
+import androidx.recyclerview.widget.RecyclerView;
 import projekt.substratum.R;
+import projekt.substratum.Substratum;
 import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Theming;
 import projekt.substratum.databinding.ThemeEntryCardBinding;
 import projekt.substratum.databinding.ThemeEntryLongPressSheetDialogBinding;
 import projekt.substratum.util.views.SheetDialog;
+
+import java.util.List;
 
 import static projekt.substratum.common.Internal.PLAY_URL_PREFIX;
 import static projekt.substratum.common.References.PLAY_STORE_PACKAGE_NAME;
@@ -78,7 +66,7 @@ public class ThemeAdapter extends RecyclerView.Adapter<ThemeAdapter.ViewHolder> 
         ThemeItem themeItem = this.information.get(pos);
         this.context = themeItem.getContext();
         ThemeEntryCardBinding viewHolderBinding = viewHolder.getBinding();
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
+        SharedPreferences prefs = Substratum.getPreferences();
 
         viewHolderBinding.themeCard.setOnClickListener(
                 v -> Theming.launchTheme(this.context, themeItem.getThemePackage()));
@@ -211,7 +199,7 @@ public class ThemeAdapter extends RecyclerView.Adapter<ThemeAdapter.ViewHolder> 
                 LinearLayout uninstall = sheetDialogBinding.uninstall;
                 uninstall.setOnClickListener(view2 -> {
                     Uri packageURI = Uri.parse("package:" + themeItem.getThemePackage());
-                    Intent uninstallIntent = new Intent(Intent.ACTION_DELETE, packageURI);
+                    Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageURI);
                     this.context.startActivity(uninstallIntent);
                     sheetDialog.dismiss();
                 });

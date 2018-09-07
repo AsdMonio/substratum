@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.util.helpers;
@@ -21,19 +10,19 @@ package projekt.substratum.util.helpers;
 import android.content.Context;
 import android.os.NetworkOnMainThreadException;
 import android.util.Log;
+import projekt.substratum.Substratum;
 import projekt.substratum.common.References;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
 
 import static projekt.substratum.common.Internal.BYTE_ACCESS_RATE;
 
-public enum FileDownloader {
-    ;
+public class FileDownloader {
 
     /**
      * @param context                 getContext() or getApplicationContext()
@@ -51,6 +40,7 @@ public enum FileDownloader {
             NetworkOnMainThreadException {
 
         try {
+            fileUrl = fileUrl.replace("http://", "https://");
             // First create the cache folder
             File directory = new File(context.getCacheDir().getAbsolutePath() + '/' +
                     destinationFileOrFolder);
@@ -72,12 +62,12 @@ public enum FileDownloader {
 
             // Once the cache folder is created, start downloading the file
             URL url = new URL(fileUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
             String outputDir = context.getCacheDir().getAbsolutePath() + '/' +
                     destinationFileOrFolder +
                     (outputFile != null && !outputFile.isEmpty() ? '/' + outputFile : "");
-            Log.d(References.SUBSTRATUM_LOG, "Placing file in: " + outputDir);
-            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
+            Substratum.log(References.SUBSTRATUM_LOG, "Placing file in: " + outputDir);
+            if (connection.getResponseCode() != HttpsURLConnection.HTTP_OK) {
                 Log.e("Server returned HTTP", connection.getResponseCode()
                         + " " + connection.getResponseMessage());
             }
@@ -100,7 +90,7 @@ public enum FileDownloader {
                 e.printStackTrace();
             } finally {
                 connection.disconnect();
-                Log.d("FileDownloader",
+                Substratum.log("FileDownloader",
                         "File download function has concluded for '" + fileUrl + "'.");
             }
         } catch (Exception e) {

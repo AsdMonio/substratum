@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.tabs;
@@ -24,17 +13,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.databinding.DataBindingUtil;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.support.annotation.NonNull;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -45,6 +28,19 @@ import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import projekt.substratum.R;
+import projekt.substratum.Substratum;
+import projekt.substratum.common.References;
+import projekt.substratum.common.Systems;
+import projekt.substratum.common.commands.ElevatedCommands;
+import projekt.substratum.common.commands.FileOperations;
+import projekt.substratum.databinding.TabFontsBinding;
+import projekt.substratum.util.tabs.FontUtils;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -58,14 +54,6 @@ import java.lang.ref.WeakReference;
 import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
-import projekt.substratum.R;
-import projekt.substratum.common.References;
-import projekt.substratum.common.Systems;
-import projekt.substratum.common.commands.ElevatedCommands;
-import projekt.substratum.common.commands.FileOperations;
-import projekt.substratum.databinding.TabFontsBinding;
-import projekt.substratum.util.tabs.FontUtils;
 
 import static projekt.substratum.common.Internal.BOLD_FONT;
 import static projekt.substratum.common.Internal.BOLD_ITALICS_FONT;
@@ -97,7 +85,7 @@ public class Fonts extends Fragment {
     private Spinner fontSelector;
     private String themePid;
     private ProgressDialog progressDialog;
-    private SharedPreferences prefs;
+    private SharedPreferences prefs = Substratum.getPreferences();
     private AsyncTask current;
     private boolean paused;
     private JobReceiver jobReceiver;
@@ -136,8 +124,6 @@ public class Fonts extends Fragment {
             // At this point, the tab has been incorrectly loaded
             return null;
         }
-
-        prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
         try {
             fontSelector = setThemeExtraLists(context,
@@ -386,7 +372,7 @@ public class Fonts extends Fragment {
             final Fonts fonts = ref.get();
             if (fonts != null) {
                 try {
-                    Log.d(TAG, "Fonts have been loaded on the drawing panel.");
+                    Substratum.log(TAG, "Fonts have been loaded on the drawing panel.");
 
                     final String work_directory =
                             fonts.context.getCacheDir().getAbsolutePath() + FONT_PREVIEW_CACHE;
@@ -446,19 +432,21 @@ public class Fonts extends Fragment {
                 try {
                     final File cacheDirectory = new File(fonts.context.getCacheDir(), FONT_CACHE);
                     if (!cacheDirectory.exists()) {
-                        if (cacheDirectory.mkdirs()) Log.d(TAG, "FontCache folder created");
+                        if (cacheDirectory.mkdirs())
+                            Substratum.log(TAG, "FontCache folder created");
                     }
                     final File cacheDirectory2 =
                             new File(fonts.context.getCacheDir(), FONT_PREVIEW_CACHE);
 
                     if (!cacheDirectory2.exists()) {
-                        if (cacheDirectory2.mkdirs()) Log.d(TAG,
+                        if (cacheDirectory2.mkdirs()) Substratum.log(TAG,
                                 "FontCache work folder created");
                     } else {
                         FileOperations.delete(fonts.context,
                                 fonts.context.getCacheDir().getAbsolutePath() +
                                         FONT_PREVIEW_CACHE);
-                        if (cacheDirectory2.mkdirs()) Log.d(TAG, "FontCache folder recreated");
+                        if (cacheDirectory2.mkdirs())
+                            Substratum.log(TAG, "FontCache folder recreated");
                     }
 
                     // Copy the font.zip from assets/fonts of the theme's assets

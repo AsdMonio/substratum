@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum;
@@ -31,35 +20,18 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.content.res.ColorStateList;
-import android.databinding.DataBindingUtil;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.preference.PreferenceManager;
-import android.support.annotation.RestrictTo;
-import android.support.design.widget.AppBarLayout;
-import android.support.design.widget.CollapsingToolbarLayout;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.Snackbar;
-import android.support.design.widget.TabLayout;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.graphics.ColorUtils;
-import android.support.v4.view.PagerAdapter;
-import android.support.v4.view.ViewPager;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.graphics.Palette;
-import android.support.v7.widget.AppCompatImageView;
-import android.support.v7.widget.CardView;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -71,23 +43,28 @@ import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import androidx.annotation.RestrictTo;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatImageView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.cardview.widget.CardView;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.graphics.ColorUtils;
+import androidx.databinding.DataBindingUtil;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.palette.graphics.Palette;
+import androidx.viewpager.widget.PagerAdapter;
+import androidx.viewpager.widget.ViewPager;
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.appbar.CollapsingToolbarLayout;
+import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.tabs.TabLayout;
 import com.gordonwong.materialsheetfab.DimOverlayFrameLayout;
 import com.gordonwong.materialsheetfab.MaterialSheetFab;
 import com.gordonwong.materialsheetfab.MaterialSheetFabEventListener;
 import com.theartofdev.edmodo.cropper.CropImage;
-
 import org.apache.commons.io.output.ByteArrayOutputStream;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-
 import projekt.substratum.adapters.activities.IATabsAdapter;
 import projekt.substratum.common.Broadcasts;
 import projekt.substratum.common.Internal;
@@ -109,6 +86,15 @@ import projekt.substratum.util.helpers.Root;
 import projekt.substratum.util.views.FloatingActionMenu;
 import projekt.substratum.util.views.Lunchbar;
 import projekt.substratum.util.views.SheetDialog;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 
 import static android.graphics.Bitmap.CompressFormat.PNG;
 import static projekt.substratum.common.Internal.ANDROMEDA_RECEIVER;
@@ -169,7 +155,7 @@ public class InformationActivity extends AppCompatActivity {
     private boolean uninstalled = false;
     private byte[] byteArray;
     private Bitmap heroImageBitmap;
-    private SharedPreferences prefs;
+    private SharedPreferences prefs = Substratum.getPreferences();
     private ProgressDialog mProgressDialog;
     private MenuItem favorite;
     private boolean shouldDarken;
@@ -438,7 +424,6 @@ public class InformationActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         context = getApplicationContext();
-        prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
         super.onCreate(savedInstanceState);
         InformationActivityBinding binding =
@@ -549,6 +534,11 @@ public class InformationActivity extends AppCompatActivity {
             getWindow().setNavigationBarColor(dominantColor);
         }
 
+        if (!dynamicActionBarColors || !dynamicNavBarColors) {
+            heroImage.setImageDrawable(new ColorDrawable(Color.TRANSPARENT));
+            appBarLayout.setBackgroundColor(getWindow().getStatusBarColor());
+        }
+
         // Show the FAB
         floatingActionButton.show();
 
@@ -573,7 +563,7 @@ public class InformationActivity extends AppCompatActivity {
                 for (String foundFolder : foundFolders) {
                     if (Resources.allowedForLegacy
                             (foundFolder)) {
-                        tabChecker.add(foundFolder.toString());
+                        tabChecker.add(foundFolder);
                     }
                 }
             } else {
@@ -888,7 +878,7 @@ public class InformationActivity extends AppCompatActivity {
         Thread currentThread = Substratum.currentThread;
         if ((currentThread == null || !currentThread.isAlive()) &&
                 (Systems.isSamsung(context) ||
-                        (Systems.checkOreo() &&
+                        (Systems.IS_OREO &&
                                 Systems.isNewSamsungDevice()))) {
             Substratum.startSamsungPackageMonitor(context);
         }
@@ -1236,7 +1226,7 @@ public class InformationActivity extends AppCompatActivity {
                     context.getCacheDir().getAbsolutePath();
             File deleted = new File(workingDirectory);
             FileOperations.delete(context, deleted.getAbsolutePath());
-            if (!deleted.exists()) Log.d(References.SUBSTRATUM_BUILDER,
+            if (!deleted.exists()) Substratum.log(References.SUBSTRATUM_BUILDER,
                     "Successfully cleared Substratum cache!");
         }
     }
@@ -1454,7 +1444,7 @@ public class InformationActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (!Packages.isPackageInstalled(context, themePid)) {
-                Log.d("ThemeUninstaller",
+                Substratum.log("ThemeUninstaller",
                         "The theme was uninstalled, so the activity is now closing!");
                 Broadcasts.sendRefreshMessage(context);
                 finish();
@@ -1485,7 +1475,7 @@ public class InformationActivity extends AppCompatActivity {
                         packageName.equals(themePid)) {
                     String themeUpdatedToastText = String.format(
                             getString(R.string.toast_activity_finished), themeName);
-                    Log.d(SUBSTRATUM_LOG,
+                    Substratum.log(SUBSTRATUM_LOG,
                             themeName + " was just updated, now closing InformationActivity...");
                     Toast.makeText(context, themeUpdatedToastText, Toast.LENGTH_LONG).show();
                     finish();
@@ -1493,7 +1483,7 @@ public class InformationActivity extends AppCompatActivity {
                             Theming.launchTheme(context, themePid), 500L);
                 }
             } else if (compilingProcess) {
-                Log.d(SUBSTRATUM_LOG,
+                Substratum.log(SUBSTRATUM_LOG,
                         "Tried to restart activity but theme was compiling, delaying...");
                 shouldRestartActivity = true;
             }

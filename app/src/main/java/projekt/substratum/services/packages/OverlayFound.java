@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.services.packages;
@@ -27,21 +16,19 @@ import android.content.pm.ResolveInfo;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.AsyncTask;
-import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
-import android.util.Log;
+import androidx.core.app.NotificationCompat;
+import projekt.substratum.R;
+import projekt.substratum.Substratum;
+import projekt.substratum.common.Broadcasts;
+import projekt.substratum.common.Packages;
+import projekt.substratum.common.References;
+import projekt.substratum.common.platform.ThemeManager;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-
-import projekt.substratum.R;
-import projekt.substratum.common.Broadcasts;
-import projekt.substratum.common.Packages;
-import projekt.substratum.common.References;
-import projekt.substratum.common.platform.ThemeManager;
 
 import static projekt.substratum.common.Packages.getBitmapFromDrawable;
 import static projekt.substratum.common.References.ANDROMEDA_PACKAGE;
@@ -68,14 +55,12 @@ public class OverlayFound extends BroadcastReceiver {
 
             if (packageName.equals(SST_ADDON_PACKAGE) ||
                     packageName.equals(ANDROMEDA_PACKAGE)) {
-                SharedPreferences prefs =
-                        context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
+                SharedPreferences prefs = context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
                 prefs.edit().clear().apply();
                 Broadcasts.sendKillMessage(context);
             }
 
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-            boolean toUpdate = prefs.getBoolean("overlay_alert", false);
+            boolean toUpdate = Substratum.getPreferences().getBoolean("overlay_alert", false);
             if (!toUpdate) return;
 
             // When the package is being updated, continue.
@@ -148,7 +133,7 @@ public class OverlayFound extends BroadcastReceiver {
                 matchingCriteria = new ArrayList<>();
                 for (ResolveInfo installedTheme : installedThemes) {
                     String themePid = installedTheme.activityInfo.packageName;
-                    Log.d(TAG, "Searching theme for themable overlay: " + themePid);
+                    Substratum.log(TAG, "Searching theme for themable overlay: " + themePid);
                     try {
                         Resources themeResources = overlayFound.context.getPackageManager()
                                 .getResourcesForApplication(themePid);
@@ -156,7 +141,7 @@ public class OverlayFound extends BroadcastReceiver {
                         String[] listArray = themeAssetManager.list("overlays");
                         List<String> list = Arrays.asList(listArray);
                         if (list.contains(overlayFound.packageName)) {
-                            Log.d(TAG, "Found in theme: " + themePid);
+                            Substratum.log(TAG, "Found in theme: " + themePid);
                             matchingCriteria.add(themePid);
                         }
                     } catch (Exception ignored) {

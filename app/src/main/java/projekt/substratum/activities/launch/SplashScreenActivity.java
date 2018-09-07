@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.activities.launch;
@@ -24,7 +13,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.databinding.DataBindingUtil;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -32,15 +20,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-
+import androidx.databinding.DataBindingUtil;
 import com.jaredrummler.android.widget.AnimatedSvgView;
-
-import java.io.File;
-import java.lang.ref.WeakReference;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-
 import projekt.substratum.MainActivity;
 import projekt.substratum.R;
 import projekt.substratum.Substratum;
@@ -49,6 +30,12 @@ import projekt.substratum.common.References;
 import projekt.substratum.common.analytics.FirebaseAnalytics;
 import projekt.substratum.databinding.SplashscreenActivityBinding;
 import projekt.substratum.util.helpers.MD5;
+
+import java.io.File;
+import java.lang.ref.WeakReference;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import static projekt.substratum.common.Internal.AUTHENTICATED_RECEIVER;
 import static projekt.substratum.common.Internal.AUTHENTICATE_RECEIVER;
@@ -173,7 +160,7 @@ public class SplashScreenActivity extends Activity {
                 if (!prefs.contains(dateFormat.format(new Date()))) {
                     Log.e(SUBSTRATUM_LOG, "Failed to withdraw blacklisted packages...");
                 } else {
-                    Log.d(SUBSTRATUM_LOG, "Successfully withdrew blacklisted packages!");
+                    Substratum.log(SUBSTRATUM_LOG, "Successfully withdrew blacklisted packages!");
                 }
 
                 if (isAndromedaDevice(context)) {
@@ -203,7 +190,7 @@ public class SplashScreenActivity extends Activity {
                                     .putString("andromeda_installer", context.getPackageManager()
                                             .getInstallerPackageName(ANDROMEDA_PACKAGE))
                                     .apply();
-                            Log.d(SUBSTRATUM_LOG, "Successfully approved andromeda fingerprint!");
+                            Substratum.log(SUBSTRATUM_LOG, "Successfully approved andromeda fingerprint!");
                         }
                     }
                 }
@@ -227,7 +214,7 @@ public class SplashScreenActivity extends Activity {
                     if (!prefs2.contains("sungstratum_exp_fp_" + sstVersion)) {
                         Log.e(SUBSTRATUM_LOG, "Failed to withdraw sungstratum fingerprint...");
                     } else {
-                        Log.d(SUBSTRATUM_LOG, "Successfully approved sungstratum fingerprint!");
+                        Substratum.log(SUBSTRATUM_LOG, "Successfully approved sungstratum fingerprint!");
                     }
 
                     keyRetrieval = new KeyRetrieval();

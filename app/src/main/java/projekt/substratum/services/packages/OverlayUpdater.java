@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.services.packages;
@@ -33,20 +22,11 @@ import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.AsyncTask;
 import android.os.Handler;
-import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-
+import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import projekt.substratum.R;
+import projekt.substratum.Substratum;
 import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Systems;
@@ -54,6 +34,13 @@ import projekt.substratum.common.Theming;
 import projekt.substratum.common.commands.FileOperations;
 import projekt.substratum.common.platform.ThemeManager;
 import projekt.substratum.util.compilers.SubstratumBuilder;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import static projekt.substratum.common.Internal.CIPHER_ALGORITHM;
 import static projekt.substratum.common.Internal.ENCRYPTED_FILE_EXTENSION;
@@ -84,11 +71,15 @@ public class OverlayUpdater extends BroadcastReceiver {
     private static final String THEME_UPGRADE = "ThemeUpgrade";
     private static final Integer APP_UPGRADE_NOTIFICATION_ID = 24768941;
     private static final Integer THEME_UPGRADE_NOTIFICATION_ID = 13573743;
+    private static final SharedPreferences prefs = Substratum.getPreferences();
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        if (Systems.isNewSamsungDeviceAndromeda(context))
+            return;
         if (intent.getData() != null &&
                 PACKAGE_ADDED.equals(intent.getAction())) {
+
             String packageName = intent.getData().toString().substring(8);
 
             if (ThemeManager.isOverlay(context, intent.getData().toString().substring(8)) ||
@@ -106,7 +97,6 @@ public class OverlayUpdater extends BroadcastReceiver {
 
             // When the package is being updated, continue.
             boolean replacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
             if (replacing && !Packages.getThemesArray(context).contains(packageName)) {
                 // When the package is replacing, and also not a theme, update the overlays too!
                 boolean toUpdate = prefs.getBoolean("overlay_updater", false);
@@ -150,12 +140,12 @@ public class OverlayUpdater extends BroadcastReceiver {
         private final Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, "Waiting for encryption key handshake approval...");
+                Substratum.log(TAG, "Waiting for encryption key handshake approval...");
                 if (securityIntent != null) {
-                    Log.d(TAG, "Encryption key handshake approved!");
+                    Substratum.log(TAG, "Encryption key handshake approved!");
                     handler.removeCallbacks(runnable);
                 } else {
-                    Log.d(TAG, "Encryption key still null...");
+                    Substratum.log(TAG, "Encryption key still null...");
                     try {
                         Thread.sleep(500L);
                     } catch (InterruptedException e) {
@@ -276,10 +266,10 @@ public class OverlayUpdater extends BroadcastReceiver {
         @Override
         protected String doInBackground(String... sUrl) {
             if (!installedOverlays.isEmpty()) {
-                Log.d(TAG, '\'' + packageName +
+                Substratum.log(TAG, '\'' + packageName +
                         "' was just updated with overlays present, updating...");
                 for (int i = 0; i < installedOverlays.size(); i++) {
-                    Log.d(TAG, "Current overlay found in stash: " + installedOverlays.get(i));
+                    Substratum.log(TAG, "Current overlay found in stash: " + installedOverlays.get(i));
 
                     builder.setProgress(100, (int) (((double) (i + 1) /
                             (double) installedOverlays.size()) * 100.0), false);
@@ -321,7 +311,7 @@ public class OverlayUpdater extends BroadcastReceiver {
                             Packages.getOverlayMetadata(context, theme, metadataEncryption);
 
                     if ((encryptCheck != null) && encryptCheck.equals(metadataEncryptionValue)) {
-                        Log.d(TAG, "This overlay for " +
+                        Substratum.log(TAG, "This overlay for " +
                                 Packages.getPackageName(context, theme) +
                                 " is encrypted, passing handshake to the theme package...");
                         encrypted = true;

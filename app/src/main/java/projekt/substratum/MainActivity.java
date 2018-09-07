@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum;
@@ -22,30 +11,21 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.*;
+import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.service.quicksettings.Tile;
-import android.support.annotation.NonNull;
-import android.support.annotation.RestrictTo;
-import android.support.design.internal.BottomNavigationItemView;
-import android.support.design.internal.BottomNavigationMenuView;
-import android.support.design.widget.BottomNavigationView;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MenuItem;
@@ -53,15 +33,41 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.SearchView;
 import android.widget.TextView;
+import android.widget.Toast;
+import androidx.annotation.NonNull;
+import androidx.annotation.RestrictTo;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import com.google.android.material.bottomnavigation.BottomNavigationMenuView;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.bottomnavigation.LabelVisibilityMode;
 import projekt.substratum.activities.launch.ShowcaseActivity;
-import projekt.substratum.common.*;
+import projekt.substratum.common.Broadcasts;
+import projekt.substratum.common.Packages;
+import projekt.substratum.common.References;
+import projekt.substratum.common.Restore;
+import projekt.substratum.common.Systems;
+import projekt.substratum.common.Theming;
 import projekt.substratum.common.analytics.FirebaseAnalytics;
 import projekt.substratum.common.commands.ElevatedCommands;
 import projekt.substratum.common.commands.FileOperations;
 import projekt.substratum.common.platform.AndromedaService;
 import projekt.substratum.common.platform.ThemeManager;
 import projekt.substratum.databinding.MainActivityBinding;
-import projekt.substratum.fragments.*;
+import projekt.substratum.fragments.ManagerFragment;
+import projekt.substratum.fragments.PriorityListFragment;
+import projekt.substratum.fragments.PriorityLoaderFragment;
+import projekt.substratum.fragments.ProfileFragment;
+import projekt.substratum.fragments.SettingsFragment;
+import projekt.substratum.fragments.ThemeFragment;
 import projekt.substratum.services.binder.AndromedaBinderService;
 import projekt.substratum.services.floatui.SubstratumFloatInterface;
 import projekt.substratum.services.tiles.FloatUiTile;
@@ -71,7 +77,6 @@ import projekt.substratum.util.helpers.Root;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -79,12 +84,34 @@ import java.util.concurrent.TimeUnit;
 
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS;
-import static projekt.substratum.common.Activities.*;
+import static projekt.substratum.common.Activities.launchActivityUrl;
+import static projekt.substratum.common.Activities.launchExternalActivity;
+import static projekt.substratum.common.Activities.launchInternalActivity;
 import static projekt.substratum.common.Internal.ANDROMEDA_RECEIVER;
 import static projekt.substratum.common.Internal.MAIN_ACTIVITY_RECEIVER;
 import static projekt.substratum.common.Packages.getAppVersionCode;
-import static projekt.substratum.common.References.*;
-import static projekt.substratum.common.Systems.*;
+import static projekt.substratum.common.References.ANDROMEDA_PACKAGE;
+import static projekt.substratum.common.References.BYPASS_SYSTEM_VERSION_CHECK;
+import static projekt.substratum.common.References.ENABLE_ROOT_CHECK;
+import static projekt.substratum.common.References.EXTERNAL_STORAGE_CACHE;
+import static projekt.substratum.common.References.LOGCHAR_DIR;
+import static projekt.substratum.common.References.NO_THEME_ENGINE;
+import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_N_UNROOTED;
+import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_ANDROMEDA;
+import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_ROOTED;
+import static projekt.substratum.common.References.OVERLAY_MANAGER_SERVICE_O_UNROOTED;
+import static projekt.substratum.common.References.OVERLAY_UPDATE_RANGE;
+import static projekt.substratum.common.References.SAMSUNG_THEME_ENGINE_N;
+import static projekt.substratum.common.References.SST_ADDON_PACKAGE;
+import static projekt.substratum.common.References.SUBSTRATUM_BUILDER;
+import static projekt.substratum.common.References.SUBSTRATUM_BUILDER_CACHE;
+import static projekt.substratum.common.References.SUBSTRATUM_LOG;
+import static projekt.substratum.common.Systems.checkAndromeda;
+import static projekt.substratum.common.Systems.checkSubstratumServiceApi;
+import static projekt.substratum.common.Systems.checkThemeSystemModule;
+import static projekt.substratum.common.Systems.checkUsagePermissions;
+import static projekt.substratum.common.Systems.isSamsung;
+import static projekt.substratum.common.Systems.isSamsungDevice;
 import static projekt.substratum.common.commands.FileOperations.delete;
 import static projekt.substratum.common.platform.ThemeManager.uninstallOverlay;
 
@@ -108,7 +135,7 @@ public class MainActivity extends AppCompatActivity implements
     private ActionBar supportActionBar;
     private int permissionCheck = PackageManager.PERMISSION_DENIED;
     private Dialog progressDialog;
-    private SharedPreferences prefs;
+    private SharedPreferences prefs = Substratum.getPreferences();
     private LocalBroadcastManager localBroadcastManager;
     private KillReceiver killReceiver;
     private AndromedaReceiver andromedaReceiver;
@@ -129,7 +156,7 @@ public class MainActivity extends AppCompatActivity implements
                     context,
                     overlay);
             if ((current_version <= OVERLAY_UPDATE_RANGE) && (current_version != 0)) {
-                Log.d("OverlayOutdatedCheck",
+                Substratum.log("OverlayOutdatedCheck",
                         "An overlay is returning " + current_version +
                                 " as Substratum's version, " +
                                 "this overlay is out of date, please uninstall and reinstall!");
@@ -150,7 +177,7 @@ public class MainActivity extends AppCompatActivity implements
             uninstallOverlay(activity.getApplicationContext(), MainActivity.queuedUninstall);
         } else if (!MainActivity.queuedUninstall.isEmpty()) {
             Uri packageURI = Uri.parse("package:" + MainActivity.queuedUninstall.get(0));
-            Intent uninstallIntent = new Intent(Intent.ACTION_DELETE, packageURI);
+            Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageURI);
             activity.startActivityForResult(uninstallIntent, UNINSTALL_REQUEST_CODE);
         }
     }
@@ -250,7 +277,6 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         context = getApplicationContext();
-        prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
         super.onCreate(savedInstanceState);
 
@@ -258,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements
         progressDialog.setCancelable(false);
 
         if (BuildConfig.DEBUG && !isSamsungDevice(context)) {
-            Log.d(SUBSTRATUM_LOG, "Substratum launched with debug mode signatures.");
+            Substratum.log(SUBSTRATUM_LOG, "Substratum launched with debug mode signatures.");
         }
         MainActivityBinding binding = DataBindingUtil.setContentView(this, R.layout.main_activity);
         actionbarContent = binding.themeCount;
@@ -292,9 +318,9 @@ public class MainActivity extends AppCompatActivity implements
                     new IntentFilter(ANDROMEDA_RECEIVER));
         }
 
-        Systems.setROMVersion(context, false);
+        Systems.setROMVersion(false);
         Systems.setAndCheckOMS(context);
-        Systems.setAndCheckSubstratumService(context);
+        Systems.setAndCheckSubstratumService();
 
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -318,26 +344,8 @@ public class MainActivity extends AppCompatActivity implements
         getSupportActionBar().setDisplayHomeAsUpEnabled(false);
         getSupportActionBar().setDisplayShowHomeEnabled(false);
 
+        bottomBar.setLabelVisibilityMode(LabelVisibilityMode.LABEL_VISIBILITY_LABELED);
         menuView = (BottomNavigationMenuView) bottomBar.getChildAt(0);
-
-        try {
-            Field shiftingMode = menuView.getClass().getDeclaredField("mShiftingMode");
-            shiftingMode.setAccessible(true);
-            shiftingMode.setBoolean(menuView, false);
-            shiftingMode.setAccessible(false);
-            for (int i = 0; i < menuView.getChildCount(); i++) {
-                BottomNavigationItemView item =
-                        (BottomNavigationItemView) menuView.getChildAt(i);
-                //noinspection RestrictedApi
-                item.setShiftingMode(false);
-                // set once again checked value, so view will be updated
-                //noinspection RestrictedApi
-                item.setChecked(item.getItemData().isChecked());
-            }
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            // suppress exception
-        }
-
         if (Systems.checkOMS(context) && !isSamsung(context)) {
             menuView.findViewById(R.id.tab_priorities).setVisibility(View.VISIBLE);
             menuView.findViewById(R.id.tab_profiles).setVisibility(View.VISIBLE);
@@ -399,9 +407,15 @@ public class MainActivity extends AppCompatActivity implements
                         .setTitle(R.string.backend_not_authorized_title)
                         .setMessage(R.string.backend_not_authorized_text)
                         .setPositiveButton(R.string.dialog_ok, (dialogInterface, i) -> {
-                            startActivity(
+                            try {
+                                startActivity(
                                     new Intent(ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
-                            finishAffinity();
+                            } catch (ActivityNotFoundException ignored /* People with developer options disabled */) {
+                                Toast.makeText(this, this.getString(R.string.development_settings_disabled), Toast.LENGTH_LONG).show();
+                            } finally {
+                                dialogInterface.dismiss();
+                                finishAffinity();
+                            }
                         })
                         .setNegativeButton(R.string.dialog_cancel, (dialogInterface, i) ->
                                 finishAffinity())
@@ -444,7 +458,7 @@ public class MainActivity extends AppCompatActivity implements
         if (TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS) >= 15L) {
             prefs.edit().putLong("previous_logchar_cleanup", currentDate.getTime()).apply();
             new ClearLogs(this).execute();
-            Log.d(SUBSTRATUM_LOG, "LogChar reports were wiped from the storage");
+            Substratum.log(SUBSTRATUM_LOG, "LogChar reports were wiped from the storage");
         }
     }
 
@@ -457,8 +471,7 @@ public class MainActivity extends AppCompatActivity implements
     @SuppressWarnings("LocalCanBeFinal")
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        SharedPreferences prefs = context.getSharedPreferences(
-                "substratum_state", Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
         switch (item.getItemId()) {
             case android.R.id.home:
                 onBackPressed();
@@ -618,7 +631,7 @@ public class MainActivity extends AppCompatActivity implements
         if (ManagerFragment.materialSheetFab != null &&
                 ManagerFragment.materialSheetFab.isSheetVisible()) {
             ManagerFragment.materialSheetFab.hideSheet();
-        } else if (!searchView.isIconified()) {
+        } else if (searchView != null && !searchView.isIconified()) {
             searchView.setIconified(true);
             if (userInput.length() > 0) {
                 onQueryTextChange("");
@@ -654,7 +667,6 @@ public class MainActivity extends AppCompatActivity implements
      * Activate FloatUI
      */
     private void showFloatingHead() {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         prefs.edit().putInt("float_tile", Tile.STATE_ACTIVE).apply();
         FloatUiTile.requestListeningState(context,
                 new ComponentName(context, FloatUiTile.class));
@@ -674,7 +686,6 @@ public class MainActivity extends AppCompatActivity implements
      * Deactivate FloatUI
      */
     private void hideFloatingHead() {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         prefs.edit().putInt("float_tile", Tile.STATE_INACTIVE).apply();
         FloatUiTile.requestListeningState(context,
                 new ComponentName(context, FloatUiTile.class));
@@ -752,7 +763,7 @@ public class MainActivity extends AppCompatActivity implements
                         if (!deleted) Log.e(References.SUBSTRATUM_LOG,
                                 "Unable to delete directory");
                     } else {
-                        Log.d(References.SUBSTRATUM_LOG, "Deleting old cache dir: " + directory);
+                        Substratum.log(References.SUBSTRATUM_LOG, "Deleting old cache dir: " + directory);
                     }
                     if (!directory.exists()) {
                         boolean made = directory.mkdirs();
@@ -760,7 +771,7 @@ public class MainActivity extends AppCompatActivity implements
                                 "Unable to create directory");
                     } else {
                         References.injectRescueArchives(context);
-                        Log.d(References.SUBSTRATUM_LOG, "Successfully made dir: " + directory);
+                        Substratum.log(References.SUBSTRATUM_LOG, "Successfully made dir: " + directory);
                     }
                     File cacheDirectory = new File(getCacheDir(),
                             SUBSTRATUM_BUILDER_CACHE);
@@ -776,7 +787,7 @@ public class MainActivity extends AppCompatActivity implements
                                 .getAbsolutePath() +
                                 SUBSTRATUM_BUILDER_CACHE + file.getName());
                     }
-                    Log.d(SUBSTRATUM_BUILDER, "The cache has been flushed!");
+                    Substratum.log(SUBSTRATUM_BUILDER, "The cache has been flushed!");
                     References.injectRescueArchives(context);
                 } else {
                     // permission was not granted, show closing dialog
@@ -892,9 +903,9 @@ public class MainActivity extends AppCompatActivity implements
 
                                 if (!Systems.checkROMVersion(context)) {
                                     activity.prefs.edit().remove("oms_state").apply();
-                                    Systems.setROMVersion(context, true);
+                                    Systems.setROMVersion(true);
                                     Systems.setAndCheckOMS(context);
-                                    Systems.setAndCheckSubstratumService(context);
+                                    Systems.setAndCheckSubstratumService();
                                     activity.recreate();
                                 }
 
@@ -965,10 +976,10 @@ public class MainActivity extends AppCompatActivity implements
                             .show();
                 } else {
                     if (!Systems.checkROMVersion(context)) {
-                        Systems.setROMVersion(context, true);
+                        Systems.setROMVersion(true);
                         activity.prefs.edit().remove("oms_state").apply();
                         Systems.setAndCheckOMS(context);
-                        Systems.setAndCheckSubstratumService(context);
+                        Systems.setAndCheckSubstratumService();
                         activity.recreate();
                     }
 
@@ -1140,7 +1151,7 @@ public class MainActivity extends AppCompatActivity implements
                                 findViewById(R.id.tab_profiles).setVisibility(View.GONE);
                         activity.bottomBar.
                                 setSelectedItemId(R.id.tab_overlay_manager);
-                    } else if (Systems.checkOreo() &&
+                    } else if (Systems.IS_OREO &&
                             !Packages.isPackageInstalled(context, ANDROMEDA_PACKAGE)) {
                         TextView andromedaTitle = activity.progressDialog.findViewById(
                                 R.id.andromeda_title);

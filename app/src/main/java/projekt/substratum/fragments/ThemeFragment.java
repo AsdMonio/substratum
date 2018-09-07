@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.fragments;
@@ -25,17 +14,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.databinding.DataBindingUtil;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -47,20 +27,28 @@ import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.SearchView;
 import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import projekt.substratum.MainActivity;
+import projekt.substratum.R;
+import projekt.substratum.Substratum;
+import projekt.substratum.adapters.fragments.themes.ThemeAdapter;
+import projekt.substratum.adapters.fragments.themes.ThemeItem;
+import projekt.substratum.common.Packages;
+import projekt.substratum.common.Systems;
+import projekt.substratum.databinding.ThemeFragmentBinding;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
-
-import projekt.substratum.MainActivity;
-import projekt.substratum.R;
-import projekt.substratum.adapters.fragments.themes.ThemeAdapter;
-import projekt.substratum.adapters.fragments.themes.ThemeItem;
-import projekt.substratum.common.Packages;
-import projekt.substratum.common.Systems;
-import projekt.substratum.databinding.ThemeFragmentBinding;
 
 import static projekt.substratum.common.Internal.THEME_FRAGMENT_REFRESH;
 import static projekt.substratum.common.References.DEFAULT_GRID_COUNT;
@@ -77,21 +65,18 @@ public class ThemeFragment extends Fragment {
     private Context context;
     private LocalBroadcastManager localBroadcastManager;
     private BroadcastReceiver refreshReceiver;
-    private SharedPreferences prefs;
     private boolean firstBoot = true;
     private ThemeAdapter themeAdapter;
 
     /**
      * Prepares the data to be used by the cards
      *
-     * @param map      Map of packages that have been processed
-     * @param context  Self explantory, bud
-     * @param activity Activity of the calling function
+     * @param map     Map of packages that have been processed
+     * @param context Self explantory, bud
      * @return Returns an ArrayList to be used to parse further data
      */
     private static ArrayList<ThemeItem> prepareData(Map<String, String[]> map,
-                                                    Context context,
-                                                    Activity activity) {
+                                                    Context context) {
         ArrayList<ThemeItem> themes = new ArrayList<>();
         for (int i = 0; i < map.size(); i++) {
             ThemeItem themeItem = new ThemeItem();
@@ -115,17 +100,16 @@ public class ThemeFragment extends Fragment {
      *
      * @param themeFragment      Theme Fragment
      * @param context            Self explanatory, bud
-     * @param prefs              Shared Preferences instance
      * @param activity           Activity of calling function
      * @param substratumPackages List of collected substratum packages
      * @param themeItems         List of collected themes
      */
     private static void refreshLayout(ThemeFragment themeFragment,
-                                      SharedPreferences prefs,
                                       Context context,
                                       Activity activity,
                                       Map<String, String[]> substratumPackages,
                                       ArrayList<ThemeItem> themeItems) {
+        SharedPreferences prefs = Substratum.getPreferences();
 
         TextView cardViewText = themeFragment.cardView.findViewById(R.id.no_themes_description);
         ImageView cardViewImage = themeFragment.cardView.findViewById(R.id.no_themes_installed);
@@ -299,7 +283,6 @@ public class ThemeFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
         context = getContext();
-        prefs = PreferenceManager.getDefaultSharedPreferences(context);
         ThemeFragmentBinding viewBinding =
                 DataBindingUtil.inflate(inflater, R.layout.theme_fragment, container, false);
         View view = viewBinding.getRoot();
@@ -350,7 +333,6 @@ public class ThemeFragment extends Fragment {
             if (themeFragment != null) {
                 refreshLayout(
                         themeFragment,
-                        themeFragment.prefs,
                         themeFragment.context,
                         themeFragment.getActivity(),
                         this.substratumPackages,
@@ -368,8 +350,7 @@ public class ThemeFragment extends Fragment {
                 Map<String, String[]> map = new TreeMap<>(substratumPackages);
                 themeItems = prepareData(
                         map,
-                        themeFragment.context,
-                        themeFragment.getActivity()
+                        themeFragment.context
                 );
                 try {
                     Thread.sleep((long)

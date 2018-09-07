@@ -1,19 +1,8 @@
 /*
- * Copyright (c) 2016-2017 Projekt Substratum
+ * Copyright (c) 2016-2018 Projekt Substratum
  * This file is part of Substratum.
  *
- * Substratum is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Substratum is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Substratum.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-Or-Later
  */
 
 package projekt.substratum.common.systems;
@@ -24,16 +13,21 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Environment;
-import android.preference.PreferenceManager;
 import android.util.Xml;
-
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import org.xmlpull.v1.XmlSerializer;
+import projekt.substratum.Substratum;
+import projekt.substratum.common.Packages;
+import projekt.substratum.common.platform.ThemeManager;
+import projekt.substratum.services.profiles.ScheduledProfileReceiver;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -43,14 +37,6 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
-import projekt.substratum.common.Packages;
-import projekt.substratum.common.platform.ThemeManager;
-import projekt.substratum.services.profiles.ScheduledProfileReceiver;
 
 import static projekt.substratum.common.Internal.OVERLAY_PROFILE_STATE_FILE;
 import static projekt.substratum.common.Internal.PROFILE_DIRECTORY;
@@ -67,8 +53,8 @@ import static projekt.substratum.common.References.metadataOverlayType4;
 import static projekt.substratum.common.platform.ThemeManager.STATE_DISABLED;
 import static projekt.substratum.common.platform.ThemeManager.STATE_ENABLED;
 
-public enum ProfileManager {
-    ;
+public class ProfileManager {
+
     public static final String SCHEDULED_PROFILE_ENABLED = "scheduled_profile_enabled";
     public static final String SCHEDULED_PROFILE_TYPE_EXTRA = "type";
     public static final String SCHEDULED_PROFILE_CURRENT_PROFILE = "current_profile";
@@ -95,13 +81,14 @@ public enum ProfileManager {
     private static final String METADATA_PROFILE_TYPE4 = "type4";
     private static final String DAY = "day";
 
+    private static final SharedPreferences prefs = Substratum.getPreferences();
+
     /**
      * Update the scheduled profile
      *
      * @param context Context
      */
     public static void updateScheduledProfile(Context context) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, ScheduledProfileReceiver.class);
         intent.putExtra(SCHEDULED_PROFILE_TYPE_EXTRA, NIGHT);
@@ -174,7 +161,6 @@ public enum ProfileManager {
                                               String nightProfile,
                                               Integer nightHour,
                                               Integer nightMinute) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         SharedPreferences.Editor editor = prefs.edit();
         AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context
                 .ALARM_SERVICE);
@@ -245,8 +231,7 @@ public enum ProfileManager {
      * @param context Context
      */
     public static void disableScheduledProfile(Context context) {
-        SharedPreferences.Editor editor =
-                PreferenceManager.getDefaultSharedPreferences(context).edit();
+        SharedPreferences.Editor editor = prefs.edit();
         AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, ScheduledProfileReceiver.class);
         intent.putExtra(SCHEDULED_PROFILE_TYPE_EXTRA, NIGHT);
