@@ -17,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import org.apache.commons.io.FileUtils;
 import projekt.substratum.Substratum;
+import projekt.substratum.common.References;
 import projekt.substratum.common.platform.SubstratumService;
 import projekt.substratum.common.platform.ThemeInterfacerService;
 import projekt.substratum.util.helpers.Root;
@@ -125,42 +126,42 @@ public class FileOperations {
      * Mount system RW
      */
     public static void mountRW() {
-        Root.runCommand("mount -o " + checkBox("rw") + " /system");
+        Root.runCommand(String.format("mount -t auto -o %s %s", checkBox("rw"), References.isMagisk() ? References.MAGISK_MIRROR_MOUNT_POINT : "/system"));
     }
 
     /**
      * Mount data RW
      */
     public static void mountRWData() {
-        Root.runCommand("mount -o " + checkBox("rw") + " /data");
+        Root.runCommand("mount -t auto -o " + checkBox("rw") + " /data");
     }
 
     /**
      * Mount vendor RW
      */
     public static void mountRWVendor() {
-        Root.runCommand("mount -o " + checkBox("rw") + " /vendor");
+        Root.runCommand("mount -t auto -o " + checkBox("rw") + " /vendor");
     }
 
     /**
      * Mount system RO
      */
     public static void mountRO() {
-        Root.runCommand("mount -o " + checkBox("ro") + " /system");
+        Root.runCommand(String.format("mount -t auto -o %s %s", checkBox("ro"), References.isMagisk() ? References.MAGISK_MIRROR_MOUNT_POINT : "/system"));
     }
 
     /**
      * Mount data RO
      */
     public static void mountROData() {
-        Root.runCommand("mount -o " + checkBox("ro") + " /data");
+        Root.runCommand("mount -t auto -o " + checkBox("ro") + " /data");
     }
 
     /**
      * Mount vendor RO
      */
     public static void mountROVendor() {
-        Root.runCommand("mount -o " + checkBox("ro") + " /vendor");
+        Root.runCommand("mount -t auto -o " + checkBox("ro") + " /vendor");
     }
 
     /**

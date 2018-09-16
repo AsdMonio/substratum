@@ -545,8 +545,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         boolean isEnabled = (boolean) newValue;
                         autoDisableTargetOverlays.setVisible(!isEnabled);
                         prefs.edit().putBoolean("auto_disable_target_overlays", !isEnabled).apply();
-                        prefs.edit().putBoolean("sungstromeda_mode",
-                                isEnabled).apply();
+                        prefs.edit().putBoolean("sungstromeda_mode", isEnabled).apply();
                         sungstromedaMode.setChecked((Boolean) newValue);
                         new Handler().postDelayed(() ->
                                 Substratum.restartSubstratum(context), 1000L);
