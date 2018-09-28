@@ -266,28 +266,21 @@ public class ProfileFragment extends Fragment {
         backupButton.setOnClickListener(v -> {
             if (backupName.getText().length() > 0) {
                 selectedBackup = new ArrayList<>();
-                CharSequence[] items;
-                if (Systems.checkOMS(context) ||
-                        projekt.substratum.common.Resources.isFontsSupported(context)) {
-                    items = new CharSequence[]{
-                            getString(R.string.profile_boot_animation),
-                            getString(R.string.profile_font),
-                            getString(R.string.profile_overlay),
-                            getString(R.string.profile_sound),
-                            getString(R.string.profile_wallpaper)};
-                } else {
-                    items = new CharSequence[]{
-                            getString(R.string.profile_boot_animation),
-                            getString(R.string.profile_overlay),
-                            getString(R.string.profile_sound),
-                            getString(R.string.profile_wallpaper)};
-                }
-
+                ArrayList<CharSequence> items = new ArrayList<>();
+                items.add(getString(R.string.profile_overlay));
+                items.add(getString(R.string.profile_wallpaper));
+                if (projekt.substratum.common.Resources.isFontsSupported(context))
+                    items.add(getString(R.string.profile_font));
+                if (projekt.substratum.common.Resources.isSoundsSupported(context))
+                    items.add(getString(R.string.profile_sound));
+                if (projekt.substratum.common.Resources.isBootAnimationSupported(context))
+                    items.add(getString(R.string.profile_boot_animation));
+                CharSequence[] dialogItems = items.toArray(new CharSequence[]{});
                 AlertDialog dialog = new AlertDialog.Builder(context)
                         .setTitle(R.string.profile_dialog_title)
-                        .setMultiChoiceItems(items, null, (dialog1, which, isChecked) -> {
+                        .setMultiChoiceItems(dialogItems, null, (dialog1, which, isChecked) -> {
                             if (isChecked) {
-                                if (items[which].equals(getString(R.string
+                                if (dialogItems[which].equals(getString(R.string
                                         .profile_boot_animation))
                                         && (Systems.getDeviceEncryptionStatus(context) > 1)
                                         && Systems.checkThemeInterfacer(context)) {
@@ -299,8 +292,8 @@ public class ProfileFragment extends Fragment {
                                             .create();
                                     dialog2.show();
                                 }
-                                selectedBackup.add(items[which]);
-                            } else selectedBackup.remove(items[which]);
+                                selectedBackup.add(dialogItems[which]);
+                            } else selectedBackup.remove(dialogItems[which]);
                         })
                         .setPositiveButton(R.string.profile_dialog_ok, null)
                         .setNegativeButton(R.string.dialog_cancel, null)
@@ -682,18 +675,18 @@ public class ProfileFragment extends Fragment {
                         }
                     }
                 } else {
-                    String current_directory;
+                    String currentDirectory;
                     if (projekt.substratum.common.Resources.inNexusFilter()) {
-                        current_directory = SYSTEM_OVERLAY;
+                        currentDirectory = SYSTEM_OVERLAY;
                     } else {
-                        current_directory = SYSTEM_VENDOR_OVERLAY;
+                        currentDirectory = SYSTEM_VENDOR_OVERLAY;
                     }
-                    File file = new File(current_directory);
+                    File file = new File(currentDirectory);
                     if (file.exists()) {
                         FileOperations.mountRW();
                         if (profileFragment.selectedBackup.contains(
                                 profileFragment.getString(R.string.profile_overlay))) {
-                            FileOperations.copyDir(profileFragment.context, current_directory,
+                            FileOperations.copyDir(profileFragment.context, currentDirectory,
                                     Environment.getExternalStorageDirectory().getAbsolutePath() +
                                             PROFILE_DIRECTORY);
                             File oldFolder = new File(Environment
@@ -826,35 +819,35 @@ public class ProfileFragment extends Fragment {
                                 .execute();
                     }
                 } else {
-                    String current_directory;
+                    String currentDirectory;
                     if (projekt.substratum.common.Resources.inNexusFilter()) {
-                        current_directory = PIXEL_NEXUS_DIR;
+                        currentDirectory = PIXEL_NEXUS_DIR;
                     } else {
-                        current_directory = LEGACY_NEXUS_DIR;
+                        currentDirectory = LEGACY_NEXUS_DIR;
                     }
-                    File file = new File(current_directory);
+                    File file = new File(currentDirectory);
                     if (file.exists()) {
                         // Delete destination overlays
                         FileOperations.mountRW();
-                        FileOperations.delete(profileFragment.context, current_directory);
+                        FileOperations.delete(profileFragment.context, currentDirectory);
                         FileOperations.delete(profileFragment.context, THEME_DIRECTORY);
-                        FileOperations.createNewFolder(profileFragment.context, current_directory);
+                        FileOperations.createNewFolder(profileFragment.context, currentDirectory);
                         FileOperations.createNewFolder(profileFragment.context, THEME_DIRECTORY);
                         FileOperations.setPermissions(THEME_755, THEME_DIRECTORY);
 
-                        File profile_apk_files = new File(Environment
+                        File profileApkFiles = new File(Environment
                                 .getExternalStorageDirectory()
                                 .getAbsolutePath() + PROFILE_DIRECTORY +
                                 profileFragment.profileSelector.getSelectedItem() + '/');
-                        String[] located_files = profile_apk_files.list();
-                        for (String found : located_files) {
+                        String[] locatedFiles = profileApkFiles.list();
+                        for (String found : locatedFiles) {
                             if (!"audio".equals(found)) {
                                 FileOperations.copyDir(profileFragment.context, Environment
                                         .getExternalStorageDirectory()
                                         .getAbsolutePath() +
                                         PROFILE_DIRECTORY +
                                         profileFragment.profileSelector.getSelectedItem() +
-                                        '/' + found, current_directory);
+                                        '/' + found, currentDirectory);
                             } else {
                                 FileOperations.copyDir(profileFragment.context, Environment
                                         .getExternalStorageDirectory()
@@ -867,27 +860,25 @@ public class ProfileFragment extends Fragment {
                                 FileOperations.setPermissions(THEME_755, AUDIO_THEME_DIRECTORY);
                             }
                         }
-                        FileOperations.setPermissionsRecursively(THEME_644, current_directory);
-                        FileOperations.setPermissions(THEME_755, current_directory);
-                        FileOperations.setSystemFileContext(current_directory);
+                        FileOperations.setPermissionsRecursively(THEME_644, currentDirectory);
+                        FileOperations.setPermissions(THEME_755, currentDirectory);
+                        FileOperations.setSystemFileContext(currentDirectory);
                         FileOperations.mountRO();
                     } else {
-                        String vendor_location = LEGACY_NEXUS_DIR;
-                        String vendor_partition = VENDOR_DIR;
-                        String current_vendor =
-                                ((projekt.substratum.common.Resources.inNexusFilter()) ?
-                                        vendor_partition : vendor_location);
+                        String vendorLocation = LEGACY_NEXUS_DIR;
+                        String vendorPartition = VENDOR_DIR;
+                        String currentVendor = projekt.substratum.common.Resources.inNexusFilter() ? vendorPartition : vendorLocation;
                         FileOperations.mountRW();
-                        File vendor = new File(current_vendor);
+                        File vendor = new File(currentVendor);
                         if (!vendor.exists()) {
-                            if (current_vendor.equals(vendor_location)) {
-                                FileOperations.createNewFolder(current_vendor);
+                            if (currentVendor.equals(vendorLocation)) {
+                                FileOperations.createNewFolder(currentVendor);
                             } else {
                                 FileOperations.mountRWVendor();
-                                String vendor_symlink = PIXEL_NEXUS_DIR;
-                                FileOperations.createNewFolder(vendor_symlink);
-                                FileOperations.symlink(vendor_symlink, "/vendor");
-                                FileOperations.setPermissions(755, vendor_partition);
+                                String vendorSymlink = PIXEL_NEXUS_DIR;
+                                FileOperations.createNewFolder(vendorSymlink);
+                                FileOperations.symlink(vendorSymlink, "/vendor");
+                                FileOperations.setPermissions(755, vendorPartition);
                                 FileOperations.mountROVendor();
                             }
                         }
@@ -895,11 +886,11 @@ public class ProfileFragment extends Fragment {
                         FileOperations.delete(profileFragment.context, THEME_DIRECTORY);
                         FileOperations.createNewFolder(profileFragment.context, THEME_DIRECTORY);
 
-                        File profile_apk_files = new File(Environment
+                        File profileApkFiles = new File(Environment
                                 .getExternalStorageDirectory()
                                 .getAbsolutePath() + PROFILE_DIRECTORY +
                                 profileFragment.profileSelector.getSelectedItem() + '/');
-                        String[] located_files = profile_apk_files.list();
+                        String[] located_files = profileApkFiles.list();
                         for (String found : located_files) {
                             if (!"audio".equals(found)) {
                                 FileOperations.copyDir(profileFragment.context, Environment
@@ -907,7 +898,7 @@ public class ProfileFragment extends Fragment {
                                         .getAbsolutePath() +
                                         PROFILE_DIRECTORY +
                                         profileFragment.profileSelector.getSelectedItem() +
-                                        '/' + found, current_directory);
+                                        '/' + found, currentDirectory);
                             } else {
                                 FileOperations.setPermissions(755, THEME_DIRECTORY);
                                 FileOperations.copyDir(profileFragment.context, Environment
@@ -921,9 +912,9 @@ public class ProfileFragment extends Fragment {
                                 FileOperations.setPermissions(THEME_755, AUDIO_THEME_DIRECTORY);
                             }
                         }
-                        FileOperations.setPermissionsRecursively(THEME_644, current_directory);
-                        FileOperations.setPermissions(THEME_755, current_directory);
-                        FileOperations.setSystemFileContext(current_directory);
+                        FileOperations.setPermissionsRecursively(THEME_644, currentDirectory);
+                        FileOperations.setPermissions(THEME_755, currentDirectory);
+                        FileOperations.setSystemFileContext(currentDirectory);
                         FileOperations.mountRO();
 
                         // Restore wallpaper
@@ -1125,6 +1116,7 @@ public class ProfileFragment extends Fragment {
             progressDialog.setMessage(progress[0]);
         }
 
+        @SuppressLint("StringFormatMatches")
         @Override
         protected Void doInBackground(Void... params) {
             ProfileFragment profileFragment = ref.get();
@@ -1139,17 +1131,12 @@ public class ProfileFragment extends Fragment {
                         String compilePackage = toBeCompiled.get(i).get(0);
                         ProfileItem currentItem = items.get(compilePackage);
 
-                        @SuppressLint("StringFormatMatches")
                         // Seems like there's a bug with lint according to
-                                // https://stackoverflow.com/questions/23960019/
-                                // lint-gives-wrong-format-type-when-using-long-values-in-strings
-                                // -xml
-
-                                String format = String.format(
-                                profileFragment.getString(R.string.profile_compile_progress),
-                                i + 1,
-                                toBeCompiled.size(),
-                                compilePackage);
+                        // https://stackoverflow.com/questions/23960019
+                        // lint-gives-wrong-format-type-when-using-long-values-in-strings
+                        // -xml
+                        String format = String.format(profileFragment.getString(R.string.profile_compile_progress),
+                                i + 1, toBeCompiled.size(), compilePackage);
                         publishProgress(format);
 
                         String theme = currentItem.getParentTheme();

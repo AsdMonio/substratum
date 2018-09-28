@@ -18,6 +18,7 @@ import androidx.annotation.RestrictTo;
 import org.apache.commons.io.FileUtils;
 import projekt.substratum.Substratum;
 import projekt.substratum.common.References;
+import projekt.substratum.common.Systems;
 import projekt.substratum.common.platform.SubstratumService;
 import projekt.substratum.common.platform.ThemeInterfacerService;
 import projekt.substratum.util.helpers.Root;
@@ -126,7 +127,12 @@ public class FileOperations {
      * Mount system RW
      */
     public static void mountRW() {
-        Root.runCommand(String.format("mount -t auto -o %s %s", checkBox("rw"), References.isMagisk() ? References.MAGISK_MIRROR_MOUNT_POINT : "/system"));
+        final String mountPoint;
+        if (Systems.IS_PIE)
+            mountPoint = References.getPieMountPoint();
+        else
+            mountPoint = "/system";
+        Root.runCommand(String.format("mount -t auto -o %s %s", checkBox("rw"), mountPoint));
     }
 
     /**
@@ -147,7 +153,12 @@ public class FileOperations {
      * Mount system RO
      */
     public static void mountRO() {
-        Root.runCommand(String.format("mount -t auto -o %s %s", checkBox("ro"), References.isMagisk() ? References.MAGISK_MIRROR_MOUNT_POINT : "/system"));
+        final String mountPoint;
+        if (Systems.IS_PIE)
+            mountPoint = References.getPieMountPoint();
+        else
+            mountPoint = "/system";
+        Root.runCommand(String.format("mount -t auto -o %s %s", checkBox("ro"), mountPoint));
     }
 
     /**
