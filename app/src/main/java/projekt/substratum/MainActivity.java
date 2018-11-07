@@ -105,10 +105,10 @@ import static projekt.substratum.common.References.SST_ADDON_PACKAGE;
 import static projekt.substratum.common.References.SUBSTRATUM_BUILDER;
 import static projekt.substratum.common.References.SUBSTRATUM_BUILDER_CACHE;
 import static projekt.substratum.common.References.SUBSTRATUM_LOG;
-import static projekt.substratum.common.Systems.checkAndromeda;
 import static projekt.substratum.common.Systems.checkSubstratumServiceApi;
 import static projekt.substratum.common.Systems.checkThemeSystemModule;
 import static projekt.substratum.common.Systems.checkUsagePermissions;
+import static projekt.substratum.common.Systems.isAndromedaDevice;
 import static projekt.substratum.common.Systems.isSamsung;
 import static projekt.substratum.common.Systems.isSamsungDevice;
 import static projekt.substratum.common.commands.FileOperations.delete;
@@ -123,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements
     private static final int PERMISSIONS_REQUEST_USAGE_ACCESS_SETTINGS = 3;
     private static final int UNINSTALL_REQUEST_CODE = 12675;
     private static final String SELECTED_TAB_ITEM = "selected_tab_item";
+    private static final SharedPreferences prefs = Substratum.getPreferences();
     public static String userInput = "";
     public static ArrayList<String> queuedUninstall;
     public static boolean instanceBasedAndromedaFailure;
@@ -134,7 +135,6 @@ public class MainActivity extends AppCompatActivity implements
     private ActionBar supportActionBar;
     private int permissionCheck = PackageManager.PERMISSION_DENIED;
     private Dialog progressDialog;
-    private static final SharedPreferences prefs = Substratum.getPreferences();
     private LocalBroadcastManager localBroadcastManager;
     private KillReceiver killReceiver;
     private AndromedaReceiver andromedaReceiver;
@@ -383,7 +383,7 @@ public class MainActivity extends AppCompatActivity implements
                         .setPositiveButton(R.string.dialog_ok, (dialogInterface, i) -> {
                             try {
                                 startActivity(
-                                    new Intent(ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                                        new Intent(ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
                             } catch (ActivityNotFoundException ignored /* People with developer options disabled */) {
                                 Toast.makeText(this, this.getString(R.string.development_settings_disabled), Toast.LENGTH_LONG).show();
                             } finally {
@@ -904,7 +904,7 @@ public class MainActivity extends AppCompatActivity implements
                                 }
 
                                 if (Systems.checkOMS(context) &&
-                                        Systems.isXiaomiDevice(context) &&
+                                        Systems.isXiaomiDevice() &&
                                         !prefs.contains("xiaomi_enable_development")) {
                                     AlertDialog.Builder alert = new AlertDialog.Builder(activity);
                                     alert.setTitle(R.string.warning_title);
@@ -978,7 +978,7 @@ public class MainActivity extends AppCompatActivity implements
                     }
 
                     if (Systems.checkOMS(context) &&
-                            Systems.isXiaomiDevice(context) &&
+                            Systems.isXiaomiDevice() &&
                             !prefs.contains("xiaomi_enable_development")) {
                         AlertDialog.Builder alert = new AlertDialog.Builder(activity);
                         alert.setTitle(R.string.warning_title);
@@ -986,8 +986,11 @@ public class MainActivity extends AppCompatActivity implements
                         alert.setPositiveButton(R.string.dialog_ok,
                                 (dialog2, i2) -> dialog2.cancel());
                         alert.setNegativeButton(R.string.dialog_check, (dialog, which) -> {
-                            activity.startActivity(
-                                    new Intent(ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                            try {
+                                activity.startActivity(new Intent(ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                            } catch (ActivityNotFoundException ignored) {
+                                Toast.makeText(context, R.string.development_settings_disabled, Toast.LENGTH_LONG).show();
+                            }
                             activity.finishAffinity();
                         });
                         alert.setNeutralButton(R.string.dialog_do_not_show_again,
@@ -1076,12 +1079,14 @@ public class MainActivity extends AppCompatActivity implements
                         textView.setVisibility(View.GONE);
                         titleView.setVisibility(View.GONE);
                     } else if (Systems.isAndromedaDevice(context) &&
-                            (!AndromedaService.checkServerActivity() || prefs.getBoolean("sungstromeda_mode", false))) {
+                            (Systems.isNewSamsungDeviceAndromeda(context) ?
+                                    !prefs.getBoolean("sungstromeda_mode", false) :
+                                    !AndromedaService.checkServerActivity())) {
                         TextView andromedaTitle = activity.progressDialog.findViewById(R.id.andromeda_title);
                         Button andromedaOfflineButton = activity.progressDialog.findViewById(R.id.andromeda_offline_button);
                         TextView andromedaDebugText = activity.progressDialog.findViewById(R.id.andromeda_debug_text);
                         andromedaTitle.setVisibility(View.VISIBLE);
-                        if (!checkAndromeda(context)) {
+                        if (!isAndromedaDevice(context)) {
                             andromedaTitle.setText(R.string.andromeda_no_firebase);
                             appCloseButton.setVisibility(View.VISIBLE);
                         } else {

@@ -140,7 +140,14 @@ public class Systems {
             }
 
             if (IS_PIE) {
-                if (checkSubstratumService(context)) {
+                if (isNewSamsungDevice() && isAndromedaDevice(context)) {
+                    // Andromeda mode
+                    prefs.edit().putInt(
+                            "current_theme_mode",
+                            OVERLAY_MANAGER_SERVICE_O_ANDROMEDA
+                    ).apply();
+                    return OVERLAY_MANAGER_SERVICE_O_ANDROMEDA;
+                } else if (checkSubstratumService(context)) {
                     // SS mode
                     prefs.edit().putInt(
                             "current_theme_mode",
@@ -299,38 +306,13 @@ public class Systems {
      * @param context You know it, right?
      * @return True, if using Andromeda
      */
-    public static boolean checkAndromeda(Context context) {
-        if (context == null) {
-            Log.e(SUBSTRATUM_LOG,
-                    "activity has been destroyed, cannot check if andromeda is used");
-            return false;
-        }
-
-        SharedPreferences prefs = context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
-        String fingerprint = prefs.getString("andromeda_fp", "o");
-        String expFingerprint = prefs.getString(
-                "andromeda_exp_fp_" + Packages.getAppVersionCode(context, ANDROMEDA_PACKAGE), "0");
-        String installer = prefs.getString("andromeda_installer", "o");
-
-        boolean andromedaPresent = isAndromedaDevice(context);
-        andromedaPresent &= installer.equals(PLAY_STORE_PACKAGE_NAME);
-        andromedaPresent &= fingerprint.toUpperCase(Locale.US)
-                .equals(expFingerprint.toUpperCase(Locale.US));
-        return andromedaPresent;
-    }
-
-    /**
-     * Check if it is using the Andromeda backend
-     *
-     * @param context You better know it.
-     * @return True, if using Andromeda
-     */
     public static boolean isAndromedaDevice(Context context) {
         if (context == null) {
             Log.e(SUBSTRATUM_LOG,
                     "activity has been destroyed, cannot check if andromeda is used");
             return false;
         }
+
         boolean isEnabled = Packages.isAvailablePackage(context, References.ANDROMEDA_PACKAGE);
         PackageInfo packageInfo = getAndromedaPackage(context);
         return (packageInfo != null) && isEnabled;
@@ -359,25 +341,11 @@ public class Systems {
         if (!isSamsungDevice(context)) return false;
         if (isNewSamsungDeviceAndromeda(context)) return true;
 
-        SharedPreferences prefs = context.getSharedPreferences("substratum_state", Context.MODE_PRIVATE);
-
-        boolean debuggingValue = prefs.getBoolean("sungstratum_debug", true);
-        boolean installer = prefs.getBoolean("sungstratum_installer", false);
-        String fingerprint = prefs.getString("sungstratum_fp", "0");
-        String expFingerprint = prefs.getString(
-                "sungstratum_exp_fp_" + Packages.getAppVersionCode(context, SST_ADDON_PACKAGE),
-                "o");
         String liveInstaller = Packages.getInstallerId(context, SST_ADDON_PACKAGE);
 
-        boolean sungstratumPresent = !debuggingValue;
-        sungstratumPresent &= installer;
-        sungstratumPresent &= fingerprint.toUpperCase(
-                Locale.US).equals(
-                expFingerprint.toUpperCase(Locale.US));
-        boolean liveInstallerValidity = (liveInstaller != null) &&
-                liveInstaller.equals(PLAY_STORE_PACKAGE_NAME);
-        sungstratumPresent &= liveInstallerValidity;
-        return sungstratumPresent;
+        return Packages.isPackageInstalled(context, SST_ADDON_PACKAGE) &&
+                ((liveInstaller != null) &&
+                        liveInstaller.equals(PLAY_STORE_PACKAGE_NAME));
     }
 
     public static boolean isSamsungDevice(Context context) {
@@ -412,17 +380,16 @@ public class Systems {
      */
     public static boolean isNewSamsungDeviceAndromeda(Context context) {
         boolean sungstromeda = prefs.getBoolean("sungstromeda_mode", true);
-        return sungstromeda && isNewSamsungDevice() && checkAndromeda(context);
+        return sungstromeda && isNewSamsungDevice() && isAndromedaDevice(context);
     }
 
     /**
      * Checks if the device is a Xiaomi device
      *
-     * @param context CONTEXT!
      * @return True, if it passes all Xiaomi tests
      */
-    public static boolean isXiaomiDevice(Context context) {
-        return context != null && new File("/system/etc/permissions/platform-miui.xml").exists();
+    public static boolean isXiaomiDevice() {
+        return new File("/system/etc/permissions/platform-miui.xml").exists();
     }
 
     /**
