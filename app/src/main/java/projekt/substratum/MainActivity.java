@@ -46,7 +46,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import com.google.android.material.bottomnavigation.BottomNavigationMenuView;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomnavigation.LabelVisibilityMode;
 import projekt.substratum.activities.launch.ShowcaseActivity;
@@ -56,7 +55,6 @@ import projekt.substratum.common.References;
 import projekt.substratum.common.Restore;
 import projekt.substratum.common.Systems;
 import projekt.substratum.common.Theming;
-import projekt.substratum.common.analytics.FirebaseAnalytics;
 import projekt.substratum.common.commands.ElevatedCommands;
 import projekt.substratum.common.commands.FileOperations;
 import projekt.substratum.common.platform.AndromedaService;
@@ -73,6 +71,7 @@ import projekt.substratum.services.floatui.SubstratumFloatInterface;
 import projekt.substratum.services.tiles.FloatUiTile;
 import projekt.substratum.util.helpers.BinaryInstaller;
 import projekt.substratum.util.helpers.LocaleHelper;
+import projekt.substratum.util.helpers.MagiskHelper;
 import projekt.substratum.util.helpers.Root;
 
 import java.io.File;
@@ -406,6 +405,7 @@ public class MainActivity extends AppCompatActivity implements
                 return;
             }
         }
+        prefs.edit().remove("root_access").apply();
         new RootRequester(this).execute();
     }
 
@@ -693,7 +693,8 @@ public class MainActivity extends AppCompatActivity implements
             case UNINSTALL_REQUEST_CODE:
                 if ((queuedUninstall != null) && !queuedUninstall.isEmpty()) {
                     queuedUninstall.remove(0);
-                    uninstallMultipleAPKS(this);
+                    Activity activity = this;
+                    AsyncTask.execute(() -> uninstallMultipleAPKS(activity));
                 }
                 break;
             default:
@@ -1061,10 +1062,7 @@ public class MainActivity extends AppCompatActivity implements
                                 R.id.sungstratum_button);
                         samsungButton.setOnClickListener(view ->
                                 launchActivityUrl(context, R.string.sungstratum_url));
-                        if (!FirebaseAnalytics.checkFirebaseAuthorized()) {
-                            samsungTitle.setText(activity.getString(
-                                    R.string.samsung_prototype_no_firebase_dialog));
-                        } else if (Packages.isPackageInstalled(context, SST_ADDON_PACKAGE)) {
+                        if (Packages.isPackageInstalled(context, SST_ADDON_PACKAGE)) {
                             samsungTitle.setText(
                                     activity.getString(
                                             R.string.samsung_prototype_reinstall_dialog));
@@ -1124,7 +1122,10 @@ public class MainActivity extends AppCompatActivity implements
                     }
                 } else {
                     BinaryInstaller.install(activity.context, false);
-                    if (Systems.checkOMS(context)) new DoCleanUp(context).execute();
+                    if (Systems.checkOMS(context)) {
+                        new DoCleanUp(context).execute();
+                        if (Root.checkRootAccess() && Systems.IS_PIE) MagiskHelper.migrateToModule(context);
+                    }
                 }
             }
         }
@@ -1178,14 +1179,14 @@ public class MainActivity extends AppCompatActivity implements
                 if (omsCheck) {
                     return (themeSystemModule != OVERLAY_MANAGER_SERVICE_O_UNROOTED) &&
                             (themeSystemModule != OVERLAY_MANAGER_SERVICE_N_UNROOTED) &&
-                            !Root.requestRootAccess();
+                            !Root.checkRootAccess();
                 }
 
                 // Check if the system is legacy
                 boolean legacyCheck = themeSystemModule == NO_THEME_ENGINE;
                 if (legacyCheck) {
                     // Throw the dialog, after checking for root
-                    return !Root.requestRootAccess();
+                    return !Root.checkRootAccess();
                 }
             }
             return false;
@@ -1247,6 +1248,7 @@ public class MainActivity extends AppCompatActivity implements
                 if (!removeList.isEmpty())
                     uninstallOverlay(context, removeList);
             }
+            new Thread(MagiskHelper::forceRemoveOverlays).start();
             return null;
         }
     }

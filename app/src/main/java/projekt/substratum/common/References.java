@@ -59,10 +59,8 @@ import projekt.substratum.MainActivity;
 import projekt.substratum.R;
 import projekt.substratum.Substratum;
 import projekt.substratum.activities.shortcuts.AppShortcutLaunch;
-import projekt.substratum.common.analytics.FirebaseAnalytics;
 import projekt.substratum.services.profiles.ScheduledProfileReceiver;
 import projekt.substratum.util.helpers.BinaryInstaller;
-import projekt.substratum.util.helpers.Root;
 import projekt.substratum.util.helpers.TranslatorParser;
 
 import java.io.BufferedReader;
@@ -82,15 +80,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 import static android.content.Context.CLIPBOARD_SERVICE;
 import static projekt.substratum.common.Internal.BYTE_ACCESS_RATE;
-import static projekt.substratum.common.Systems.checkPackageRegex;
 
 public class References {
 
@@ -191,7 +185,6 @@ public class References {
     public static final String DATA_RESOURCE_DIR = "/data/resource-cache/";
     public static final String PIXEL_NEXUS_DIR = "/system/overlay/";
     public static final String LEGACY_NEXUS_DIR = "/system/vendor/overlay/";
-    public static final String MAGISK_MIRROR_MOUNT_POINT = "/sbin/.core/mirror/system";
     public static final String VENDOR_DIR = "/vendor/overlay/";
     // Notification Channel
     public static final String DEFAULT_NOTIFICATION_CHANNEL_ID = "default";
@@ -234,55 +227,25 @@ public class References {
     // Special permission for Samsung devices
     public static final String SAMSUNG_OVERLAY_PERMISSION =
             "com.samsung.android.permission.SAMSUNG_OVERLAY_COMPONENT";
+    public static final String MAGISK_MODULE_DIR = "/sbin/.magisk/img/substratum/";
     // This string controls the hero image name
     static final String heroImageResourceName = "heroimage";
     static final String heroImageGridResourceName = "heroimage_grid";
     static final String heroImageMainResourceName = "heroimage_banner";
     // Specific intents Substratum should be listening to
     static final String APP_CRASHED = "projekt.substratum.APP_CRASHED";
-    private static final String P_SYSTEM_DIR = "/system/app/";
-    private static final String P_MAGISK_DIR = MAGISK_MIRROR_MOUNT_POINT + "/app/";
     // Control the animation duration
     private static final int FADE_FROM_GRAYSCALE_TO_COLOR_DURATION = 1250;
     // Localized variables shared amongst common resources
     static ScheduledProfileReceiver scheduledProfileReceiver;
-    // These values control the dynamic certification of substratum
-    // We use java.lang.Boolean here rather than a normal boolean
-    // since it being an Object allows us to have a third state - null,
-    // which means that the variable has not been initialised, where
-    // boolean simply takes on the value false.
-    private static Boolean uncertified;
     private static int hashValue;
-    private static String pieDir = null;
-    private static Boolean isMagisk = null;
 
     public static String getPieDir() {
-        isMagisk = checkMagisk();
-        if (pieDir == null) {
-            if (isMagisk != null && isMagisk)
-                pieDir = P_MAGISK_DIR;
-            else
-                pieDir = P_SYSTEM_DIR;
-        }
-        return pieDir;
+        return MAGISK_MODULE_DIR + "system/app/";
     }
 
     public static String getPieMountPoint() {
-        isMagisk = checkMagisk();
-        if (isMagisk != null && isMagisk)
-            return MAGISK_MIRROR_MOUNT_POINT;
-        else
-            return "/system";
-    }
-
-    static Boolean checkMagisk() {
-        if (isMagisk == null) {
-            try {
-                isMagisk = Root.runCommand(String.format("test -d %s && echo '0'", MAGISK_MIRROR_MOUNT_POINT)).equals("0");
-            } catch (Exception ignored) {
-            }
-        }
-        return isMagisk;
+        return MAGISK_MODULE_DIR;
     }
 
     /**
@@ -311,7 +274,7 @@ public class References {
             try {
                 final String[] fileArray = themeAssetManager.list(listDir);
                 final List<String> archivedSounds = new ArrayList<>();
-                Collections.addAll(archivedSounds, fileArray);
+                Collections.addAll(archivedSounds, fileArray != null ? fileArray : new String[0]);
 
                 // Creates the list of dropdown items
                 final ArrayList<String> unarchivedExtra = new ArrayList<>();
@@ -747,27 +710,6 @@ public class References {
     }
 
     /**
-     * A beautiful sunshine on a gloomy night, you must escape the grasps of death as it brings you
-     * to the destruction of life.
-     *
-     * @param context What's the point of parameters?
-     * @return Is it true that there is an afterlife?
-     */
-    static boolean spreadYourWingsAndFly(Context context, boolean override) {
-        if (uncertified != null && !override) {
-            return uncertified;
-        }
-        SharedPreferences prefs = context.getSharedPreferences(FirebaseAnalytics.PACKAGES_PREFS, Context.MODE_PRIVATE);
-        SimpleDateFormat dateFormat = new SimpleDateFormat("ddMMyyyy", Locale.US);
-        String date = dateFormat.format(new Date());
-        if (prefs.contains(date)) {
-            Set<String> pref = prefs.getStringSet(date, new HashSet<>());
-        }
-        uncertified = false;
-        return false;
-    }
-
-    /**
      * Check if list contains item
      *
      * @param inputStr Item
@@ -1011,7 +953,6 @@ public class References {
 
         @Override
         protected Void doInBackground(Void... sUrl) {
-            spreadYourWingsAndFly(this.context, false);
             hashPassthrough(this.context);
             return null;
         }

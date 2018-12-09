@@ -726,11 +726,11 @@ public class ThemeManager {
         }
 
         if (Systems.IS_PIE && !checkSubstratumService(context)) {
-            FileOperations.mountRW();
+            FileOperations.mountSystemRW();
             for (String overlay : overlays) {
                 FileOperations.bruteforceDelete(References.getPieDir() + '_' + overlay + ".apk");
             }
-            FileOperations.mountRO();
+            FileOperations.mountSystemRO();
             return;
         }
 
@@ -753,11 +753,10 @@ public class ThemeManager {
                                 Toast.LENGTH_LONG).show()
                 );
             }
-        } else if (MainActivity.instanceBasedAndromedaFailure ||
-                (Systems.isNewSamsungDeviceAndromeda(context)) ||
-                (Systems.isSamsungDevice(context) &&
-                        !Root.checkRootAccess() &&
-                        !Root.requestRootAccess())) {
+        } else if ((MainActivity.instanceBasedAndromedaFailure ||
+                Systems.isNewSamsungDeviceAndromeda(context) ||
+                Systems.isSamsungDevice(context)) &&
+                (!Root.checkRootAccess())) {
             for (String overlay : overlays) {
                 Uri packageURI = Uri.parse("package:" + overlay);
                 Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageURI);
