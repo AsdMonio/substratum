@@ -31,11 +31,10 @@ android {
         applicationId = "projekt.substratum"
         minSdkVersion(24)
         targetSdkVersion(28)
-        versionCode = 1013
-        versionName = "one thousand thirteen"
+        versionCode = 1015
+        versionName = "one thousand fifteen"
         buildConfigField("java.util.Date", "buildTime", "new java.util.Date(${System.currentTimeMillis()}L)")
         buildConfigField("String", "GIT_HASH", "\"${gitHash()}\"")
-        buildConfigField("boolean", "ENHANCED_LOGGING", "false")
         setProperty("archivesBaseName", "substratum_${gitHash()}")
     }
     compileOptions {
@@ -61,9 +60,6 @@ android {
             isMinifyEnabled = false
             //proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
-    }
-    dexOptions {
-        setJavaMaxHeapSize("2048m")
     }
     lintOptions.isAbortOnError = false
 }

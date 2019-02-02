@@ -52,7 +52,6 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import androidx.annotation.Nullable;
-import projekt.substratum.BuildConfig;
 import projekt.substratum.InformationActivity;
 import projekt.substratum.LauncherActivity;
 import projekt.substratum.MainActivity;
@@ -92,7 +91,7 @@ public class References {
     public static final boolean ENABLE_EXTRAS_DIALOG = false; // Show a dialog when applying extras
     public static final boolean ENABLE_AAPT_OUTPUT = false; // WARNING, DEVELOPERS - BREAKS COMPILE
     public static final boolean ENABLE_PACKAGE_LOGGING = false; // Show time/date/place of install
-    public static final boolean ENABLE_DIRECT_ASSETS_LOGGING = BuildConfig.ENHANCED_LOGGING; // Self explanatory
+    public static final boolean ENABLE_DIRECT_ASSETS_LOGGING = false; // Self explanatory
     public static final boolean BYPASS_SYSTEM_VERSION_CHECK = false; // For developer previews only!
     public static final boolean BYPASS_SUBSTRATUM_BUILDER_DELETION = false; // Do not delete cache?
     public static final String SECURITY_UPDATE_WARN_AFTER = "2018-02-01";
@@ -205,7 +204,7 @@ public class References {
     public static final int REFRESH_WINDOW_DELAY = 500;
     // This int controls the default grid count for the theme adapter
     public static final int MIN_GRID_COUNT = 1;
-    public static final int DEFAULT_GRID_COUNT = 1;
+    public static final int DEFAULT_GRID_COUNT = 2;
     public static final int MAX_GRID_COUNT = 4;
     // This String controls the default theme setting
     public static final String APP_THEME = "app_theme";
@@ -516,14 +515,8 @@ public class References {
         if (rescueFileLegacy.exists() && rescueFileLegacy.delete()) {
             Log.e(SUBSTRATUM_LOG, "Deleted the rescue legacy file!");
         }
-        copyRescueFile(context, "rescue_legacy.dat",
-                Environment.getExternalStorageDirectory().getAbsolutePath() +
-                        File.separator + "substratum" +
-                        File.separator + "SubstratumRescue_Legacy.zip");
-        copyRescueFile(context, "rescue.dat",
-                Environment.getExternalStorageDirectory().getAbsolutePath() +
-                        File.separator + "substratum" +
-                        File.separator + "SubstratumRescue.zip");
+        copyRescueFile(context, "rescue_legacy.dat", rescueFileLegacy.getAbsolutePath());
+        copyRescueFile(context, "rescue.dat", rescueFile.getAbsolutePath());
     }
 
     /**
@@ -633,7 +626,8 @@ public class References {
             return activeNetworkInfo != null &&
                     activeNetworkInfo.isConnected() &&
                     !checkSiteAvailability.equals("");
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return false;
     }
